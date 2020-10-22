@@ -1,70 +1,104 @@
-import asyncio
-import concurrent.futures
-import boto3
-from timeit import default_timer as timer
+import json
+from typing import Dict, Any
+from async_all import async_all
+import logging
 
-ROLENAME = "OrganizationAccountAccessRole"
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
-async def check_org_account_access(executor, all_accounts):
-    loop = asyncio.get_event_loop()
-    blocking_tasks = []
-    sts_client = boto3.client("sts")
+EXCLUDE_ACCS = []
 
-    for acc in all_accounts:
-        blocking_tasks.append(
-            loop.run_in_executor(executor, check_assume, sts_client, acc)
+TARGET_ACCS = []
+
+
+def scrape_iam():
+    data = get_iam_humans()
+    for zone in data:
+        if zone.get("console_users"):
+            print(json.dumps(zone, indent=4), "\n")
+
+
+def scrape_dns():
+    data = get_dns_zones()
+    for zone in data:
+        print(json.dumps(zone, indent=4), "\n\n")
+
+
+def test_assume_role():
+    test_role_works()
+
+
+def get_account_id_and_alias(session):
+    acc_id = session.client("sts").get_caller_identity().get("Account")
+    acc_alias_list = (
+        session.client("iam").list_account_aliases().get("AccountAliases", [])
+    )
+
+    if acc_alias_list:
+        acc_alias = acc_alias_list[0]
+    else:
+        acc_alias = "No account alias"
+
+    return acc_id, acc_alias
+
+
+@async_all(
+    ignore_ids=EXCLUDE_ACCS,
+    rolename="OrganizationAccountAccessRole",
+)
+def test_role_works(session):
+    return
+
+
+@async_all
+def get_dns_zones(session):
+    acc_id, acc_alias = get_account_id_and_alias(session)
+
+    r53 = session.client("route53", region_name="eu-west-1")
+    zones = r53.get_paginator("list_hosted_zones").paginate().build_full_result()
+
+    all_zone_records: Dict[str, Any] = {}
+    for zone in zones["HostedZones"]:
+        all_zone_records[zone["Name"]] = []
+        zone_records = (
+            r53.get_paginator("list_resource_record_sets")
+            .paginate(HostedZoneId=zone["Id"])
+            .build_full_result()
         )
-    completed, pending = await asyncio.wait(blocking_tasks)
-    results = [t.result() for t in completed]
-    return results
+        for record in zone_records["ResourceRecordSets"]:
+            all_zone_records[zone["Name"]].append(record)
+
+    return {
+        "account_id": acc_id,
+        "account_alias": acc_alias,
+        "zone_records": all_zone_records,
+    }
 
 
-def check_assume(sts, acc):
-    result = {"Id": acc["Id"], "Name": acc["Name"]}
-    try:
-        assume_role(sts, acc["Id"])
-        result["Success"] = True
-        return result
-    except Exception:
-        result["Success"] = False
-        return result
+@async_all(ignore_ids=EXCLUDE_ACCS)
+def get_iam_humans(session):
+    acc_id, acc_alias = get_account_id_and_alias(session)
 
+    iam = session.client("iam", region_name="eu-west-1")
+    all_users = iam.get_paginator("list_users").paginate().build_full_result()
 
-def assume_role(sts_client, account_id):
-    role_arn = f"arn:aws:iam::{account_id}:role/{ROLENAME}"
-    assumed_role_object = sts_client.assume_role(
-        RoleArn=role_arn, RoleSessionName=ROLENAME
-    )
-    return assumed_role_object["Credentials"]
+    console_users = []
+    for user in all_users["Users"]:
+        try:
+            iam.get_login_profile(UserName=user["UserName"])
+            console_users.append(user["UserName"])
+        except Exception:
+            continue
 
-
-def main():
-    executor = concurrent.futures.ThreadPoolExecutor(max_workers=64)
-    event_loop = asyncio.get_event_loop()
-
-    pages = boto3.client("organizations").get_paginator("list_accounts").paginate()
-    all_accounts = pages.build_full_result()["Accounts"]
-    print(f"There are {len(all_accounts)} AWS accounts in the organization")
-
-    start = timer()
-    check_org_account_access_results = event_loop.run_until_complete(
-        check_org_account_access(executor, all_accounts)
-    )
-    elapsed = timer() - start
-    print(f"Operation took: {elapsed}\n")
-
-    failed = [acc for acc in check_org_account_access_results if not acc["Success"]]
-    print(f"{len(failed)} accounts cannot be assumed into from Tech Billing.")
-
-    success = [acc for acc in check_org_account_access_results if acc["Success"]]
-    print(f"{len(success)} accounts assumed into from Tech Billing.")
-
-    print(f"{len(success) + len(failed)} checked of {len(all_accounts)} total")
-    print("\n\nTo fix:\n------------------------")
-    for acc in failed:
-        print(acc["Name"], ": ", acc["Id"])
+    return {
+        "account_id": acc_id,
+        "account_alias": acc_alias,
+        "console_users": console_users,
+    }
 
 
 if __name__ == "__main__":
-    main()
+    # scrape_iam()
+    # scrape_dns()
+    test_assume_role()
