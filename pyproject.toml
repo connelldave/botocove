@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "botocove"
+version = "0.1.0"
+description = "A simple decorator to run functions against all AWS accounts in an organization"
+authors = ["Dave Connell <39798556+connelldave@users.noreply.github.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+boto3 = "^1.16.12"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.1.2"
+pytest-mock = "^3.3.1"
+isort = "^5.6.4"
+flake8 = "^3.8.4"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
