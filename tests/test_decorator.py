@@ -1,6 +1,8 @@
-from botocove import cove
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
+
+from botocove import cove
 
 
 @pytest.fixture

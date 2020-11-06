@@ -1,10 +1,11 @@
 import asyncio
-from concurrent import futures
 import functools
+import logging
+from concurrent import futures
+from typing import List, Optional, Set
+
 import boto3
 from boto3 import Session
-import logging
-from typing import Set, Optional, List
 
 logger = logging.getLogger(__name__)
 

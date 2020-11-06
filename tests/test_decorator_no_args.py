@@ -1,25 +1,26 @@
-from botocove.cove import cove
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import patch, MagicMock
+
+from botocove.cove_decorator import cove
 
 
 @pytest.fixture
-def patch_boto3_session(mocker) -> MagicMock:
-    # mock_session = MagicMock()
-    # list_accounts_result = {
-    #     "Accounts": [
-    #         {"Id": "12345689012", "Status": "ACTIVE"},
-    #         {"Id": "12345689013", "Status": "ACTIVE"},
-    #     ]
-    # }
-    # mock_session.client.return_value.get_paginator.return_value.paginate.return_value.build_full_result.return_value = (
-    #     list_accounts_result
-    # )
-    # # Mock out the credential requiring API call
-    return mocker.patch("..botocove.cove.boto3")
+def patch_boto3_client(mocker) -> MagicMock:
+    mock_boto3 = mocker.patch("botocove.cove_decorator.boto3")
+    list_accounts_result = {
+        "Accounts": [
+            {"Id": "12345689012", "Status": "ACTIVE"},
+            {"Id": "12345689013", "Status": "ACTIVE"},
+        ]
+    }
+    mock_boto3.client.return_value.get_paginator.return_value.paginate.return_value.build_full_result.return_value = (
+        list_accounts_result
+    )
+    return mock_boto3
 
 
-def test_decorated_simple_func(patch_boto3_session) -> None:
+def test_decorated_simple_func(patch_boto3_client) -> None:
     @cove
     def simple_func(session) -> str:
         return "hello"
