@@ -5,7 +5,7 @@ import pytest
 from botocove.cove_decorator import cove
 
 
-@pytest.fixture
+@pytest.fixture()
 def patch_boto3_client(mocker) -> MagicMock:
     mock_boto3 = mocker.patch("botocove.cove_decorator.boto3")
     list_accounts_result = {
