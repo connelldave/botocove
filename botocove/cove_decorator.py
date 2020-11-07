@@ -1,6 +1,4 @@
 import asyncio
-
-
 import functools
 import logging
 from concurrent import futures
@@ -42,9 +40,9 @@ def get_org_accounts(
         .build_full_result()["Accounts"]
     )
 
-    active_accounts = set(
+    active_accounts = {
         acc["Id"] for acc in all_org_accounts if acc["Status"] == "ACTIVE"
-    )
+    }
 
     target_accounts = active_accounts - accounts_to_ignore
     logger.info(f"Target accounts for Cove function: {target_accounts}")
@@ -121,7 +119,7 @@ def cove(
                         results = [t.result() for t in completed]
 
                     else:
-                        raise Exception(
+                        raise ValueError(
                             "No accounts are accessible: check logs for detail"
                         )
 
