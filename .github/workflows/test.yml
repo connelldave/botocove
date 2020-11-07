@@ -1,0 +1,25 @@
+name: Testing
+
+on: [push]
+
+jobs:
+  testing:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@master
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Setup Poetry
+        uses: Gr1N/setup-poetry@v4
+
+      - name: Install dev packages
+        run: poetry install -n -v
+
+      - name: Run Pytest
+        run: poetry run pytest -vv
