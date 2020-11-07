@@ -43,7 +43,6 @@ line_length=88
 
 [tool.flakehell]
 exclude = ["README.rst", "README.md", ".git","__pycache__",".venv"]
-select = ["B","H","C","E","F","W"]
 format = "colored"
 max_line_length = 88
 show_source = true
@@ -57,12 +56,14 @@ flake8-eradicate = ["+*"]
 flake8-isort = ["+*"]
 flake8-mutable = ["+*"]
 flake8-pytest-style = ["+*"]
-flake8-spellcheck = ["+*"]
 mccabe = ["+*"]
 pep8-naming = ["+*"]
 pycodestyle = ["+*"]
 pyflakes = ["+*"]
 pylint = ["+*"]
+
+[tool.flakehell.exceptions."tests/"]
+flake8-bandit = ["+*", "-S322", "-S101"]
 
 
 
