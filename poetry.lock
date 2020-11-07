@@ -22,20 +22,20 @@ tests_no_zope = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>
 
 [[package]]
 name = "boto3"
-version = "1.16.12"
+version = "1.16.13"
 description = "The AWS SDK for Python"
 category = "main"
 optional = false
 python-versions = "*"
 
 [package.dependencies]
-botocore = ">=1.19.12,<1.20.0"
+botocore = ">=1.19.13,<1.20.0"
 jmespath = ">=0.7.1,<1.0.0"
 s3transfer = ">=0.3.0,<0.4.0"
 
 [[package]]
 name = "botocore"
-version = "1.19.12"
+version = "1.19.13"
 description = "Low-level, data-driven core of boto 3."
 category = "main"
 optional = false
@@ -55,6 +55,14 @@ optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
+name = "entrypoints"
+version = "0.3"
+description = "Discover and load entry points from installed packages."
+category = "dev"
+optional = false
+python-versions = ">=2.7"
+
+[[package]]
 name = "flake8"
 version = "3.8.4"
 description = "the modular source code checker: pep8 pyflakes and co"
@@ -66,6 +74,26 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,>=2.7"
 mccabe = ">=0.6.0,<0.7.0"
 pycodestyle = ">=2.6.0a1,<2.7.0"
 pyflakes = ">=2.2.0,<2.3.0"
+
+[[package]]
+name = "flakehell"
+version = "0.7.0"
+description = "Flake8 wrapper to make it nice and configurable"
+category = "dev"
+optional = false
+python-versions = ">=3.5"
+
+[package.dependencies]
+colorama = "*"
+entrypoints = "*"
+flake8 = ">=3.8.0"
+pygments = "*"
+toml = "*"
+urllib3 = "*"
+
+[package.extras]
+docs = ["alabaster", "pygments-github-lexers", "recommonmark", "sphinx"]
+dev = ["dlint", "flake8-2020", "flake8-aaa", "flake8-absolute-import", "flake8-alfred", "flake8-annotations-complexity", "flake8-bandit", "flake8-black", "flake8-broken-line", "flake8-bugbear", "flake8-builtins", "flake8-coding", "flake8-cognitive-complexity", "flake8-commas", "flake8-comprehensions", "flake8-debugger", "flake8-django", "flake8-docstrings", "flake8-eradicate", "flake8-executable", "flake8-expression-complexity", "flake8-fixme", "flake8-functions", "flake8-future-import", "flake8-import-order", "flake8-isort", "flake8-logging-format", "flake8-mock", "flake8-mutable", "flake8-mypy", "flake8-pep3101", "flake8-pie", "flake8-print", "flake8-printf-formatting", "flake8-pyi", "flake8-pytest", "flake8-pytest-style", "flake8-quotes", "flake8-requirements", "flake8-rst-docstrings", "flake8-scrapy", "flake8-spellcheck", "flake8-sql", "flake8-strict", "flake8-string-format", "flake8-tidy-imports", "flake8-todo", "flake8-use-fstring", "flake8-variables-names", "isort", "mccabe", "pandas-vet", "pep8-naming", "pylint", "pytest", "typing-extensions", "wemake-python-styleguide"]
 
 [[package]]
 name = "iniconfig"
@@ -150,6 +178,14 @@ description = "passive checker of Python programs"
 category = "dev"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
+
+[[package]]
+name = "pygments"
+version = "2.7.2"
+description = "Pygments is a syntax highlighting package written in Python."
+category = "dev"
+optional = false
+python-versions = ">=3.5"
 
 [[package]]
 name = "pyparsing"
@@ -249,7 +285,7 @@ socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "b2e38222fe09d618b739c1042338366c0658a40dc6c4b8fb00e88ba7fd8034ef"
+content-hash = "cc7903da8254970295ab1dd953b0b8431858c3546de36be375616d145053c96c"
 
 [metadata.files]
 atomicwrites = [
@@ -261,20 +297,28 @@ attrs = [
     {file = "attrs-20.3.0.tar.gz", hash = "sha256:832aa3cde19744e49938b91fea06d69ecb9e649c93ba974535d08ad92164f700"},
 ]
 boto3 = [
-    {file = "boto3-1.16.12-py2.py3-none-any.whl", hash = "sha256:74c6c1757178b08cf7d43238473b8557342f007491d435b2beb312d0fe67c62f"},
-    {file = "boto3-1.16.12.tar.gz", hash = "sha256:f1cad6493686f6ad5b84a671cea86401330ab3992c9b427833741c9c028f2059"},
+    {file = "boto3-1.16.13-py2.py3-none-any.whl", hash = "sha256:23d2575b7bd01c4e7153f283c1d1c12d329dabf78a6279d4192f2e752bb67b1a"},
+    {file = "boto3-1.16.13.tar.gz", hash = "sha256:cb3f4c2f2576153b845e5b4f325d54a04f4ca00c156f2063965432bfa5d714dd"},
 ]
 botocore = [
-    {file = "botocore-1.19.12-py2.py3-none-any.whl", hash = "sha256:d0a39209551381752ca5257ae9b3eef53e7fe7eb16ccb9854fb1b14bc3d43519"},
-    {file = "botocore-1.19.12.tar.gz", hash = "sha256:bb14ea33b32b831262610ed5525770c49da42d1a6cbbc1839d11e6a05bad96fc"},
+    {file = "botocore-1.19.13-py2.py3-none-any.whl", hash = "sha256:1b1b4cf5efd552ecc7f1ce0fc674d5fba56857db5ffe6394ee76edd1a568d7a6"},
+    {file = "botocore-1.19.13.tar.gz", hash = "sha256:b3b4b8fa33620f015c52e426a92e7db21b5e667ed4785c5fbc484ebfdb2b5153"},
 ]
 colorama = [
     {file = "colorama-0.4.4-py2.py3-none-any.whl", hash = "sha256:9f47eda37229f68eee03b24b9748937c7dc3868f906e8ba69fbcbdd3bc5dc3e2"},
     {file = "colorama-0.4.4.tar.gz", hash = "sha256:5941b2b48a20143d2267e95b1c2a7603ce057ee39fd88e7329b0c292aa16869b"},
 ]
+entrypoints = [
+    {file = "entrypoints-0.3-py2.py3-none-any.whl", hash = "sha256:589f874b313739ad35be6e0cd7efde2a4e9b6fea91edcc34e58ecbb8dbe56d19"},
+    {file = "entrypoints-0.3.tar.gz", hash = "sha256:c70dd71abe5a8c85e55e12c19bd91ccfeec11a6e99044204511f9ed547d48451"},
+]
 flake8 = [
     {file = "flake8-3.8.4-py2.py3-none-any.whl", hash = "sha256:749dbbd6bfd0cf1318af27bf97a14e28e5ff548ef8e5b1566ccfb25a11e7c839"},
     {file = "flake8-3.8.4.tar.gz", hash = "sha256:aadae8761ec651813c24be05c6f7b4680857ef6afaae4651a4eccaef97ce6c3b"},
+]
+flakehell = [
+    {file = "flakehell-0.7.0-py3-none-any.whl", hash = "sha256:4cc8963c082e5b60d62186874ab930c3374ce4c7bce9a5a59b971684a1c54dc2"},
+    {file = "flakehell-0.7.0.tar.gz", hash = "sha256:7d2e813e22d25e472677c4713695051686b4cb22e2d8690c7ad9107f6106f34c"},
 ]
 iniconfig = [
     {file = "iniconfig-1.1.1-py2.py3-none-any.whl", hash = "sha256:011e24c64b7f47f6ebd835bb12a743f2fbe9a26d4cecaa7f53bc4f35ee9da8b3"},
@@ -311,6 +355,10 @@ pycodestyle = [
 pyflakes = [
     {file = "pyflakes-2.2.0-py2.py3-none-any.whl", hash = "sha256:0d94e0e05a19e57a99444b6ddcf9a6eb2e5c68d3ca1e98e90707af8152c90a92"},
     {file = "pyflakes-2.2.0.tar.gz", hash = "sha256:35b2d75ee967ea93b55750aa9edbbf72813e06a66ba54438df2cfac9e3c27fc8"},
+]
+pygments = [
+    {file = "Pygments-2.7.2-py3-none-any.whl", hash = "sha256:88a0bbcd659fcb9573703957c6b9cff9fab7295e6e76db54c9d00ae42df32773"},
+    {file = "Pygments-2.7.2.tar.gz", hash = "sha256:381985fcc551eb9d37c52088a32914e00517e57f4a21609f48141ba08e193fa0"},
 ]
 pyparsing = [
     {file = "pyparsing-2.4.7-py2.py3-none-any.whl", hash = "sha256:ef9d7589ef3c200abe66653d3f1ab1033c3c419ae9b9bdb1240a85b024efc88b"},
