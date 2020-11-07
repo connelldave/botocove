@@ -22,6 +22,6 @@ jobs:
         uses: Gr1N/setup-poetry@v4
 
       - name: Build and publish package
-      - run: |
+        run: |
           poetry config pypi-token.pypi "${{ secrets.pypi_password }}"
           poetry publish -n --build
