@@ -2,12 +2,13 @@ name: Publish Python distributions 📦 to PyPI
 
 on:
   release:
-    types: [created]
+    types: [published]
 
 jobs:
-  build-n-publish:
-    name: Build and publish Python distributions 📦 to PyPI
+  build-and-publish:
+    name: Build and publish Python distributions 📦 to PyPI repo
     runs-on: ubuntu-18.04
+
     steps:
       - name: Checkout master
         uses: actions/checkout@master
@@ -17,17 +18,10 @@ jobs:
         with:
           python-version: 3.8
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install setuptools wheel twine
+      - name: Setup Poetry
+        uses: Gr1N/setup-poetry@v4
 
-      - name: Build a binary wheel and a source tarball
-        run: |
-          python setup.py sdist bdist_wheel
-
-      - name: Publish distribution 📦 to PyPI
-        if: startsWith(github.ref, 'refs/tags')
-        uses: pypa/gh-action-pypi-publish@master
-        with:
-          password: ${{ secrets.pypi_password }}
+      - name: Build and publish package
+      - run: |
+          poetry config pypi-token.pypi "${{ secrets.pypi_password }}"
+          poetry publish -n --build

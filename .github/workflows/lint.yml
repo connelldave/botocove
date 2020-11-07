@@ -22,13 +22,10 @@ jobs:
         run: poetry install -n -v
 
       - name: Lint with flakehell
-        run: |
-          poetry run flakehell lint
+        run: poetry run flakehell lint
 
       - name: Lint with black
-        run: |
-          poetry run black . --check
+        run: poetry run black . --check
 
       - name: Lint with isort
-        run: |
-          poetry run isort . --check
+        run: poetry run isort . --check
