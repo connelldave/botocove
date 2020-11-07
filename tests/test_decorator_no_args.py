@@ -14,9 +14,10 @@ def patch_boto3_client(mocker) -> MagicMock:
             {"Id": "12345689013", "Status": "ACTIVE"},
         ]
     }
-    mock_boto3.client.return_value.get_paginator.return_value.paginate.return_value.build_full_result.return_value = (
-        list_accounts_result
-    )
+    mock_boto3.client.return_value.get_paginator.return_value.paginate. \
+        return_value.build_full_result.return_value = (
+            list_accounts_result
+        )
     return mock_boto3
 
 
