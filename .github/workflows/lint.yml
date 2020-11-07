@@ -14,19 +14,21 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.8
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python
-          poetry install -D
+
+      - name: Setup Poetry
+        uses: Gr1N/setup-poetry@v4
+
+      - name: Install dev packages
+        run: poetry install -n -v
+
       - name: Lint with flakehell
         run: |
-          flakehell lint
+          poetry run flakehell lint
 
       - name: Lint with black
         run: |
-          black --check .
+          poetry run black . --check
 
       - name: Lint with isort
         run: |
-          isort --check .
+          poetry run isort . --check
