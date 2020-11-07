@@ -5,7 +5,7 @@ import pytest
 from botocove import cove
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_boto3_session() -> MagicMock:
     mock_session = MagicMock()
     list_accounts_result = {
@@ -14,7 +14,7 @@ def mock_boto3_session() -> MagicMock:
             {"Id": "12345689013", "Status": "ACTIVE"},
         ]
     }
-    mock_session.client.return_value.get_paginator.return_value.paginate.return_value.build_full_result.return_value = (
+    mock_session.client.return_value.get_paginator.return_value.paginate.return_value.build_full_result.return_value = (  # noqa E501
         list_accounts_result
     )
     # Mock out the credential requiring API call
@@ -77,5 +77,7 @@ def test_no_account_exception(mock_boto3_session) -> None:
     def simple_func(session) -> str:
         return "hello"
 
-    with pytest.raises(Exception):
+    with pytest.raises(
+        ValueError, match="No accounts are accessible: check logs for detail"
+    ):
         simple_func()

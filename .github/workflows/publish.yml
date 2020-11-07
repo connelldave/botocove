@@ -1,0 +1,27 @@
+name: Publish Python distributions 📦 to PyPI
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-and-publish:
+    name: Build and publish Python distributions 📦 to PyPI repo
+    runs-on: ubuntu-18.04
+
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@master
+
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+
+      - name: Setup Poetry
+        uses: Gr1N/setup-poetry@v4
+
+      - name: Build and publish package
+      - run: |
+          poetry config pypi-token.pypi "${{ secrets.pypi_password }}"
+          poetry publish -n --build
