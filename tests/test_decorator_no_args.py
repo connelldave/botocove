@@ -1,3 +1,4 @@
+from typing import Tuple
 from unittest.mock import MagicMock
 
 import pytest
@@ -28,3 +29,25 @@ def test_decorated_simple_func(patch_boto3_client) -> None:
     cove_output = simple_func()
     # Two simple_func calls == two mock AWS accounts
     assert len(cove_output) == 2
+
+
+def test_decorated_func_passed_arg(patch_boto3_client) -> None:
+    @cove
+    def simple_func(session, output) -> str:
+        return output
+
+    cove_output = simple_func("blue")
+    # Two simple_func calls == two mock AWS accounts
+    assert cove_output == ["blue", "blue"]
+
+
+def test_decorated_func_passed_arg_and_kwarg(patch_boto3_client) -> None:
+    @cove
+    def simple_func(session, time, colour, shape) -> Tuple[str, str, str]:
+        return colour, shape, time
+
+    cove_output = simple_func("11:11", shape="circle", colour="blue")
+    # Call with an arg and two kwargs
+    expected = [("blue", "circle", "11:11"), ("blue", "circle", "11:11")]
+    # Two simple_func calls == two mock AWS accounts
+    assert cove_output == expected
