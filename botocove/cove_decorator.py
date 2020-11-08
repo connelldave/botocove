@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_ROLENAME = "OrganizationAccountAccessRole"
 
 
-def get_account_session(sts_client, account_id, rolename) -> Session:
+def _get_account_session(sts_client, account_id, rolename) -> Session:
     role_arn = f"arn:aws:iam::{account_id}:role/{rolename}"
     logger.debug(f"Attempting to assume {role_arn}")
     creds = sts_client.assume_role(RoleArn=role_arn, RoleSessionName=rolename)[
@@ -25,7 +25,7 @@ def get_account_session(sts_client, account_id, rolename) -> Session:
     )
 
 
-def get_org_accounts(
+def _get_org_accounts(
     org_client, sts_client, ignore_ids: Optional[List[str]]
 ) -> Set[str]:
     calling_account = set(sts_client.get_caller_identity()["Account"])
@@ -56,7 +56,7 @@ def cove(
 ):
     def async_decorator(func):
         @functools.wraps(func)
-        def wrapper():
+        def wrapper(*args):
             if not org_session:
                 # If undefined, use credentials from boto3 credential chain
                 logger.info("No Boto3 session argument: using credential chain")
@@ -72,7 +72,7 @@ def cove(
 
             # Create a set of account ID's to run function against
             if not target_ids:
-                accounts = get_org_accounts(org_client, sts_client, ignore_ids)
+                accounts = _get_org_accounts(org_client, sts_client, ignore_ids)
             elif ignore_ids:
                 accounts = set(target_ids) - set(ignore_ids)
             else:
@@ -97,11 +97,13 @@ def cove(
                     failed_account_access = {}
                     for account_id in accounts:
                         try:
-                            account_session = get_account_session(
+                            account_session = _get_account_session(
                                 sts_client, account_id, role_to_assume
                             )
                             tasks.append(
-                                loop.run_in_executor(executor, func, account_session)
+                                loop.run_in_executor(
+                                    executor, func, account_session, *args
+                                )
                             )
                         except Exception as e:
                             failed_account_access[account_id] = e

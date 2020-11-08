@@ -28,3 +28,13 @@ def test_decorated_simple_func(patch_boto3_client) -> None:
     cove_output = simple_func()
     # Two simple_func calls == two mock AWS accounts
     assert len(cove_output) == 2
+
+
+def test_decorated_func_passed_arg(patch_boto3_client) -> None:
+    @cove
+    def simple_func(session, output) -> str:
+        return output
+
+    cove_output = simple_func("blue")
+    # Two simple_func calls == two mock AWS accounts
+    assert cove_output == ["blue", "blue"]
