@@ -3,27 +3,38 @@ import functools
 import logging
 from concurrent import futures
 from functools import partial
-from typing import List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 import boto3
-from boto3 import Session
+from botocore.config import Config
+
+from botocove.cove_session import CoveSession
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_ROLENAME = "OrganizationAccountAccessRole"
 
+config = Config(max_pool_connections=20)
 
-def _get_account_session(sts_client, account_id, rolename) -> Session:
+
+def _get_cove_session(org_client, sts_client, account_id, rolename) -> CoveSession:
     role_arn = f"arn:aws:iam::{account_id}:role/{rolename}"
-    logger.debug(f"Attempting to assume {role_arn}")
-    creds = sts_client.assume_role(RoleArn=role_arn, RoleSessionName=rolename)[
-        "Credentials"
-    ]
-    return boto3.Session(
-        aws_access_key_id=creds["AccessKeyId"],
-        aws_secret_access_key=creds["SecretAccessKey"],
-        aws_session_token=creds["SessionToken"],
-    )
+    account_details = org_client.describe_account(AccountId=account_id)["Account"]
+    cove_session = CoveSession(account_details)
+    try:
+        logger.debug(f"Attempting to assume {role_arn}")
+        creds = sts_client.assume_role(RoleArn=role_arn, RoleSessionName=rolename)[
+            "Credentials"
+        ]
+        cove_session.initialize_boto_session(
+            aws_access_key_id=creds["AccessKeyId"],
+            aws_secret_access_key=creds["SecretAccessKey"],
+            aws_session_token=creds["SessionToken"],
+        )
+    except Exception as e:
+        cove_session.store_exception(e)
+
+    return cove_session
 
 
 def _get_org_accounts(
@@ -46,25 +57,83 @@ def _get_org_accounts(
     }
 
     target_accounts = active_accounts - accounts_to_ignore
-    logger.info(f"Target accounts for Cove function: {target_accounts}")
-    if not target_accounts:
-        raise ValueError("No accounts supplied to run Cove against")
     return target_accounts
 
 
+async def _get_account_sessions(org_client, sts_client, rolename, accounts):
+    with futures.ThreadPoolExecutor() as executor:
+        loop = asyncio.get_running_loop()
+        tasks = [
+            loop.run_in_executor(
+                executor,
+                _get_cove_session,
+                org_client,
+                sts_client,
+                account_id,
+                rolename,
+            )
+            for account_id in accounts
+        ]
+    sessions = await asyncio.gather(*tasks)
+    return sessions
+
+
+def wrap_func(func, raise_exception, account_session, *args, **kwargs):
+    # A simple wrapper to handle capturing and working with decorated func exceptions
+    try:
+        result = func(account_session, *args, **kwargs)
+        return account_session.format_cove_result(result)
+    except Exception as e:
+        if raise_exception is True:
+            account_session.store_exception(e)
+            logger.exception(account_session.format_cove_error())
+            raise
+        else:
+            account_session.store_exception(e)
+            return account_session.format_cove_error()
+
+
+async def _async_boto3_call(valid_sessions, raise_exception, func, *args, **kwargs):
+    with futures.ThreadPoolExecutor() as executor:
+        loop = asyncio.get_running_loop()
+        tasks = [
+            loop.run_in_executor(
+                executor,
+                partial(
+                    wrap_func, func, raise_exception, account_session, *args, **kwargs
+                ),
+            )
+            for account_session in valid_sessions
+        ]
+
+    completed = await asyncio.gather(*tasks)
+    successful_results = [
+        result for result in completed if not result.get("ExceptionDetails")
+    ]
+    exceptions = [result for result in completed if result.get("ExceptionDetails")]
+    return successful_results, exceptions
+
+
 def cove(
-    _func=None, *, target_ids=None, ignore_ids=None, rolename=None, org_session=None
+    _func=None,
+    *,
+    target_ids=None,
+    ignore_ids=None,
+    rolename=None,
+    org_session=None,
+    raise_exception=False,
 ):
-    def async_decorator(func):
+    def decorator(func):
         @functools.wraps(func)
-        def wrapper(*args, **kwargs):
+        # TODO return a dict of CoveSession?
+        def wrapper(*args, **kwargs) -> Dict[str, Any]:
+            # If undefined, use credentials from boto3 credential chain
             if not org_session:
-                # If undefined, use credentials from boto3 credential chain
                 logger.info("No Boto3 session argument: using credential chain")
-                sts_client = boto3.client("sts")
-                org_client = boto3.client("organizations")
+                sts_client = boto3.client("sts", config=config)
+                org_client = boto3.client("organizations", config=config)
+            # Use boto3 session supplied as arg
             else:
-                # Use boto3 session supplied as arg
                 logger.info(
                     f"Boto3 session {org_session} argument provided: using to create "
                 )
@@ -73,12 +142,17 @@ def cove(
 
             # Create a set of account ID's to run function against
             if not target_ids:
-                accounts = _get_org_accounts(org_client, sts_client, ignore_ids)
+                account_ids = _get_org_accounts(org_client, sts_client, ignore_ids)
             elif ignore_ids:
-                accounts = set(target_ids) - set(ignore_ids)
+                account_ids = set(target_ids) - set(ignore_ids)
             else:
-                accounts = set(target_ids)
+                account_ids = set(target_ids)
 
+            if not account_ids:
+                raise ValueError(
+                    "There are no eligible account ids to run decorated func "
+                    f"{func.__name__} against"
+                )
             # Role to assume in each account
             if not rolename:
                 # If undefined, use default AWS organization role
@@ -87,55 +161,53 @@ def cove(
                 # Use supplied role name
                 role_to_assume = rolename
 
-            logger.info(f"arguments: {role_to_assume=} {target_ids=} {ignore_ids=}")
-            logger.debug(f"Accounts targeted are: {accounts}")
+            logger.info(
+                f"Running func {func.__name__} against accounts passing arguments: "
+                f"{role_to_assume=} {target_ids=} {ignore_ids=} {org_session=}"
+            )
+            logger.debug(f"accounts targeted are {account_ids}")
 
-            async def async_boto3_call(accounts):
-                logger.info(f"Running decorated func {func.__name__}")
-                with futures.ThreadPoolExecutor() as executor:
-                    loop = asyncio.get_running_loop()
-                    tasks = []
-                    failed_account_access = {}
-                    for account_id in accounts:
-                        try:
-                            account_session = _get_account_session(
-                                sts_client, account_id, role_to_assume
-                            )
-                            tasks.append(
-                                loop.run_in_executor(
-                                    executor,
-                                    partial(func, account_session, *args, **kwargs),
-                                )
-                            )
-                        except Exception as e:
-                            failed_account_access[account_id] = e
-                            logger.debug(f"Exception caused with {account_id}: {e}")
-                            continue
+            sessions = asyncio.run(
+                _get_account_sessions(
+                    org_client, sts_client, role_to_assume, account_ids
+                )
+            )
+            valid_sessions = [
+                session for session in sessions if session.assume_role_success is True
+            ]
+            invalid_sessions = [
+                session.format_cove_error()
+                for session in sessions
+                if session.assume_role_success is False
+            ]
 
-                    if failed_account_access:
-                        logger.warning(
-                            f"Could not assume {role_to_assume} in these accounts: "
-                            f"{failed_account_access.items()}"
-                        )
+            if invalid_sessions:
+                logger.warning("Could not assume role into these accounts:")
+                for invalid_session in invalid_sessions:
+                    logger.warning(invalid_session)
+                invalid_ids = [failure["Id"] for failure in invalid_sessions]
+                logger.warning(
+                    f"\n\nInvalid session Account IDs as list: {invalid_ids}"
+                )
 
-                    if tasks:
-                        completed, _ = await asyncio.wait(tasks)
-                        results = [t.result() for t in completed]
+            if not valid_sessions:
+                raise ValueError("No accounts are accessible: check logs for detail")
 
-                    else:
-                        raise ValueError(
-                            "No accounts are accessible: check logs for detail"
-                        )
-
-                return results
-
-            all_account_results = asyncio.run(async_boto3_call(accounts))
-            return all_account_results
+            results, exceptions = asyncio.run(
+                _async_boto3_call(
+                    valid_sessions, raise_exception, func, *args, **kwargs
+                )
+            )
+            return {
+                "Results": results,
+                "Exceptions": exceptions,
+                "FailedAssumeRole": invalid_sessions,
+            }
 
         return wrapper
 
     # Handle both bare decorator and with argument
     if _func is None:
-        return async_decorator
+        return decorator
     else:
-        return async_decorator(_func)
+        return decorator(_func)
