@@ -81,3 +81,13 @@ def test_no_account_exception(mock_boto3_session) -> None:
         ValueError, match="No accounts are accessible: check logs for detail"
     ):
         simple_func()
+
+
+def test_decorated_simple_func_passed_args(mock_boto3_session) -> None:
+    @cove(org_session=mock_boto3_session)
+    def simple_func(session, arg1, arg2, arg3) -> str:
+        return arg1 + arg2 + arg3
+
+    cove_output = simple_func(1, 2, 3)
+    # Two simple_func calls == two mock AWS accounts
+    assert cove_output == [6, 6]
