@@ -2,6 +2,7 @@ import asyncio
 import functools
 import logging
 from concurrent import futures
+from functools import partial
 from typing import List, Optional, Set
 
 import boto3
@@ -56,7 +57,7 @@ def cove(
 ):
     def async_decorator(func):
         @functools.wraps(func)
-        def wrapper(*args):
+        def wrapper(*args, **kwargs):
             if not org_session:
                 # If undefined, use credentials from boto3 credential chain
                 logger.info("No Boto3 session argument: using credential chain")
@@ -102,7 +103,8 @@ def cove(
                             )
                             tasks.append(
                                 loop.run_in_executor(
-                                    executor, func, account_session, *args
+                                    executor,
+                                    partial(func, account_session, *args, **kwargs),
                                 )
                             )
                         except Exception as e:
