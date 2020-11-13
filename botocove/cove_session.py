@@ -5,13 +5,16 @@ from botocore.exceptions import ClientError
 
 
 class CoveSession(Session):
-    """Enriches a boto3 Session with Organization data from Master account"""
+    """Enriches a boto3 Session with account data from Master account if run from
+    an organization master.
+    Provides internal helper functions for managing concurrent boto3 calls
+    """
 
     assume_role_success: bool = False
     session_information: Dict[str, Any] = {}
     stored_exceptions: List[Exception] = []
 
-    def __init__(self, account_details) -> None:
+    def __init__(self, account_details: Dict[str, str]) -> None:
         ignore_fields = ["Arn", "JoinedMethod", "JoinedTimestamp"]
         for key in ignore_fields:
             account_details.pop(key, "Key not found")

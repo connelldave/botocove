@@ -1,9 +1,9 @@
 [tool.poetry]
 name = "botocove"
-version = "1.0.0"
+version = "1.1.0"
 description = "A decorator to allow running a function against all AWS accounts in an organization"
 authors = ["Dave Connell <daveconn41@gmail.com>"]
-license = "GPL-3.0-or-later"
+license = "LGPL-3.0-or-later"
 readme = "README.md"
 repository = "https://github.com/connelldave/botocove"
 keywords = ["AWS", "organizations", "AWS organizations", "boto3"]
@@ -74,7 +74,6 @@ line_length=88
 [tool.pytest.ini_options]
 addopts = "-vv"
 filterwarnings = [
-    "error",
     "ignore::DeprecationWarning",
 ]
 testpaths = [
