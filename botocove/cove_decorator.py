@@ -17,9 +17,14 @@ DEFAULT_ROLENAME = "OrganizationAccountAccessRole"
 config = Config(max_pool_connections=20)
 
 
-def _get_cove_session(org_client, sts_client, account_id, rolename) -> CoveSession:
+def _get_cove_session(
+    org_client, sts_client, account_id: str, rolename: str, org_master: bool,
+) -> CoveSession:
     role_arn = f"arn:aws:iam::{account_id}:role/{rolename}"
-    account_details = org_client.describe_account(AccountId=account_id)["Account"]
+    if org_master:
+        account_details = org_client.describe_account(AccountId=account_id)["Account"]
+    else:
+        account_details = {"Id": account_id}
     cove_session = CoveSession(account_details)
     try:
         logger.debug(f"Attempting to assume {role_arn}")
@@ -60,7 +65,9 @@ def _get_org_accounts(
     return target_accounts
 
 
-async def _get_account_sessions(org_client, sts_client, rolename, accounts):
+async def _get_account_sessions(
+    org_client, sts_client, rolename: str, accounts: List[str], org_master: bool
+):
     with futures.ThreadPoolExecutor() as executor:
         loop = asyncio.get_running_loop()
         tasks = [
@@ -71,6 +78,7 @@ async def _get_account_sessions(org_client, sts_client, rolename, accounts):
                 sts_client,
                 account_id,
                 rolename,
+                org_master,
             )
             for account_id in accounts
         ]
@@ -79,7 +87,7 @@ async def _get_account_sessions(org_client, sts_client, rolename, accounts):
 
 
 def wrap_func(func, raise_exception, account_session, *args, **kwargs):
-    # A simple wrapper to handle capturing and working with decorated func exceptions
+    # Wrapper capturing exceptions and formatting results
     try:
         result = func(account_session, *args, **kwargs)
         return account_session.format_cove_result(result)
@@ -120,25 +128,24 @@ def cove(
     target_ids=None,
     ignore_ids=None,
     rolename=None,
-    org_session=None,
+    assuming_session=None,
     raise_exception=False,
+    org_master=True,
 ):
     def decorator(func):
         @functools.wraps(func)
         # TODO return a dict of CoveSession?
         def wrapper(*args, **kwargs) -> Dict[str, Any]:
             # If undefined, use credentials from boto3 credential chain
-            if not org_session:
+            if not assuming_session:
                 logger.info("No Boto3 session argument: using credential chain")
                 sts_client = boto3.client("sts", config=config)
                 org_client = boto3.client("organizations", config=config)
             # Use boto3 session supplied as arg
             else:
-                logger.info(
-                    f"Boto3 session {org_session} argument provided: using to create "
-                )
-                sts_client = org_session.client("sts")
-                org_client = org_session.client("organizations")
+                logger.info(f"Using provided Boto3 session {assuming_session}")
+                sts_client = assuming_session.client("sts")
+                org_client = assuming_session.client("organizations")
 
             # Create a set of account ID's to run function against
             if not target_ids:
@@ -163,13 +170,13 @@ def cove(
 
             logger.info(
                 f"Running func {func.__name__} against accounts passing arguments: "
-                f"{role_to_assume=} {target_ids=} {ignore_ids=} {org_session=}"
+                f"{role_to_assume=} {target_ids=} {ignore_ids=} {assuming_session=}"
             )
             logger.debug(f"accounts targeted are {account_ids}")
 
             sessions = asyncio.run(
                 _get_account_sessions(
-                    org_client, sts_client, role_to_assume, account_ids
+                    org_client, sts_client, role_to_assume, account_ids, org_master
                 )
             )
             valid_sessions = [
