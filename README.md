@@ -2,7 +2,8 @@
 
 Run a function against a selection of AWS accounts, or all AWS accounts in an
 organization, concurrently. By default, opinionated to work with the standard
-AWS Organization master/member configuration from an organization master account.
+AWS Organization master/member configuration from an organization master
+account.
 
 - Fast
 - Easy
@@ -10,7 +11,7 @@ AWS Organization master/member configuration from an organization master account
 
 A simple decorator for functions to remove time and complexity burden. Uses
 `async.io` and `ThreadPoolExecutor` to run boto3 sessions against one to all
-of your AWS accounts at the same speed as running against one.
+of your AWS accounts at (nearly!) the same speed as running against one.
 
 Wrap a function in `@cove` and inject an assumed role session into every account
 required, gathering all results into a dictionary.
@@ -29,7 +30,8 @@ By default, the IAM user is expected to be in an AWS Organization Master account
 Default (customisable if unsuitable) expectations are:
 
 In the organization master account:
-* IAM permissions `sts:assumerole`, `sts:get-caller-identity` and `organizations:list-accounts`
+* IAM permissions `sts:assumerole`, `sts:get-caller-identity` and
+`organizations:list-accounts`
 
 In the organization accounts:
 * An `AccountOrganizationAccessRole` role
@@ -44,7 +46,8 @@ a role in each account.
 
 For example:
 
-A standard approach: this function takes a boto3 `session` and gets all IAM users from a single AWS account
+A standard approach: this function takes a boto3 `session` and gets all IAM
+users from a single AWS account
 
 ```
 import boto3
@@ -76,7 +79,7 @@ def get_iam_users(session):
 
 def main():
     # No session passed as the decorator injects it
-    all_results: Dict[str, List[Dict[str, Any]]] = get_iam_users() 
+    all_results = get_iam_users() 
     # Now returns a Dict with keys Results, Exceptions and FailedAssumeRole
     
     # A list of dictionaries for each account, with account details included.
@@ -177,5 +180,6 @@ An example of cove_output["Results"]:
 ### botocove?
 
 It turns out that the Amazon's Boto dolphins are solitary or small-group animals,
-unlike the large pods of dolphins in the oceans. This killed my "large group of boto"
-idea, so the next best idea was where might they all shelter together... a cove!
+unlike the large pods of dolphins in the oceans. This killed my "large group of 
+boto" idea, so the next best idea was where might they all shelter together... a
+cove!

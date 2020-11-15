@@ -24,7 +24,7 @@ class CoveSession(Session):
         # Overwrite boto3's repr to avoid AttributeErrors
         return f"{self.__class__.__name__}(account_id={self.session_information['Id']})"
 
-    def initialize_boto_session(self, *args, **kwargs) -> None:
+    def initialize_boto_session(self, *args: Any, **kwargs: Any) -> None:
         # Inherit from and initialize standard boto3 Session object
         super().__init__(*args, **kwargs)
         self.assume_role_success = True
@@ -36,7 +36,7 @@ class CoveSession(Session):
         else:
             self.stored_exceptions = [exception]
 
-    def format_cove_result(self, result) -> Dict[str, Any]:
+    def format_cove_result(self, result: Any) -> Dict[str, Any]:
         self.session_information["Result"] = result
         return self.session_information
 

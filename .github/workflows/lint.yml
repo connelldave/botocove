@@ -29,3 +29,6 @@ jobs:
 
       - name: Lint with isort
         run: poetry run isort . --check
+
+      - name: Lint with mypy
+        run: poetry run mypy botocove
