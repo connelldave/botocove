@@ -10,14 +10,17 @@ def mock_boto3_session() -> MagicMock:
     mock_session = MagicMock()
     list_accounts_result = {
         "Accounts": [
-            {"Id": "123", "Status": "ACTIVE"},
-            {"Id": "456", "Status": "ACTIVE"},
+            {"Id": "123123123123", "Status": "ACTIVE"},
+            {"Id": "456456456456", "Status": "ACTIVE"},
         ]
     }
     mock_session.client.return_value.get_paginator.return_value.paginate.return_value.build_full_result.return_value = (  # noqa E501
         list_accounts_result
     )
-    describe_account_results = [{"Account": {"Id": "123"}}, {"Account": {"Id": "456"}}]
+    describe_account_results = [
+        {"Account": {"Id": "123123123123"}},
+        {"Account": {"Id": "456456456456"}},
+    ]
     mock_session.client.return_value.describe_account.side_effect = (
         describe_account_results
     )
@@ -25,7 +28,7 @@ def mock_boto3_session() -> MagicMock:
 
 
 def test_decorated_simple_func(mock_boto3_session) -> None:
-    @cove(org_session=mock_boto3_session)
+    @cove(assuming_session=mock_boto3_session)
     def simple_func(session) -> str:
         return "hello"
 
@@ -35,7 +38,7 @@ def test_decorated_simple_func(mock_boto3_session) -> None:
 
 
 def test_target_ids(mock_boto3_session) -> None:
-    @cove(org_session=mock_boto3_session, target_ids=["1"])
+    @cove(assuming_session=mock_boto3_session, target_ids=["1"])
     def simple_func(session) -> str:
         return "hello"
 
@@ -46,7 +49,7 @@ def test_target_ids(mock_boto3_session) -> None:
 
 
 def test_ignore_ids(mock_boto3_session) -> None:
-    @cove(org_session=mock_boto3_session, ignore_ids=["123"])
+    @cove(assuming_session=mock_boto3_session, ignore_ids=["123123123123"])
     def simple_func(session) -> str:
         return "hello"
 
@@ -58,9 +61,9 @@ def test_ignore_ids(mock_boto3_session) -> None:
 
 def test_target_and_ignore_ids(mock_boto3_session) -> None:
     @cove(
-        org_session=mock_boto3_session,
-        target_ids=["123", "456"],
-        ignore_ids=["456"],
+        assuming_session=mock_boto3_session,
+        target_ids=["123123123123", "456456456456"],
+        ignore_ids=["456456456456"],
     )
     def simple_func(session) -> str:
         return "hello"
@@ -72,11 +75,11 @@ def test_target_and_ignore_ids(mock_boto3_session) -> None:
 
 
 def test_decorated_simple_func_passed_args(mock_boto3_session) -> None:
-    @cove(org_session=mock_boto3_session, ignore_ids=["456"])
+    @cove(assuming_session=mock_boto3_session, ignore_ids=["456456456456"])
     def simple_func(session, arg1: int, arg2: int, arg3: int) -> int:
         return arg1 + arg2 + arg3
 
     cove_output = simple_func(1, 2, 3)
-    expected = [{"Id": "123", "AssumeRoleSuccess": True, "Result": 6}]
+    expected = [{"Id": "123123123123", "AssumeRoleSuccess": True, "Result": 6}]
     # Two simple_func calls == two mock AWS accounts
     assert cove_output["Results"] == expected

@@ -3,9 +3,10 @@ import functools
 import logging
 from concurrent import futures
 from functools import partial
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import boto3
+from boto3.session import Session
 from botocore.config import Config
 
 from botocove.cove_session import CoveSession
@@ -16,9 +17,15 @@ DEFAULT_ROLENAME = "OrganizationAccountAccessRole"
 
 config = Config(max_pool_connections=20)
 
+# TODO boto3 types - s/Any/mypy_boto3 types
+
 
 def _get_cove_session(
-    org_client, sts_client, account_id: str, rolename: str, org_master: bool,
+    org_client: Any,
+    sts_client: Any,
+    account_id: str,
+    rolename: str,
+    org_master: bool,
 ) -> CoveSession:
     role_arn = f"arn:aws:iam::{account_id}:role/{rolename}"
     if org_master:
@@ -43,14 +50,14 @@ def _get_cove_session(
 
 
 def _get_org_accounts(
-    org_client, sts_client, ignore_ids: Optional[List[str]]
+    org_client: Any, sts_client: Any, ignore_ids: Optional[List[str]]
 ) -> Set[str]:
-    calling_account = set(sts_client.get_caller_identity()["Account"])
+    calling_account: Set = {sts_client.get_caller_identity()["Account"]}
     accounts_to_ignore = set(calling_account)
 
     if ignore_ids:
         accounts_to_ignore = set(ignore_ids) | accounts_to_ignore
-
+    logger.info(f"{accounts_to_ignore=}")
     all_org_accounts = (
         org_client.get_paginator("list_accounts")
         .paginate()
@@ -66,8 +73,12 @@ def _get_org_accounts(
 
 
 async def _get_account_sessions(
-    org_client, sts_client, rolename: str, accounts: List[str], org_master: bool
-):
+    org_client: Any,
+    sts_client: Any,
+    rolename: str,
+    accounts: Set[str],
+    org_master: bool,
+) -> List[CoveSession]:
     with futures.ThreadPoolExecutor() as executor:
         loop = asyncio.get_running_loop()
         tasks = [
@@ -86,7 +97,13 @@ async def _get_account_sessions(
     return sessions
 
 
-def wrap_func(func, raise_exception, account_session, *args, **kwargs):
+def wrap_func(
+    func: Callable,
+    raise_exception: bool,
+    account_session: Session,
+    *args: Any,
+    **kwargs: Any,
+) -> Dict[str, Any]:
     # Wrapper capturing exceptions and formatting results
     try:
         result = func(account_session, *args, **kwargs)
@@ -101,7 +118,13 @@ def wrap_func(func, raise_exception, account_session, *args, **kwargs):
             return account_session.format_cove_error()
 
 
-async def _async_boto3_call(valid_sessions, raise_exception, func, *args, **kwargs):
+async def _async_boto3_call(
+    valid_sessions: List[CoveSession],
+    raise_exception: bool,
+    func: Callable,
+    *args: Any,
+    **kwargs: Any,
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     with futures.ThreadPoolExecutor() as executor:
         loop = asyncio.get_running_loop()
         tasks = [
@@ -123,19 +146,30 @@ async def _async_boto3_call(valid_sessions, raise_exception, func, *args, **kwar
 
 
 def cove(
-    _func=None,
+    _func: Optional[Callable] = None,
     *,
-    target_ids=None,
-    ignore_ids=None,
-    rolename=None,
-    assuming_session=None,
-    raise_exception=False,
-    org_master=True,
-):
-    def decorator(func):
+    target_ids: Optional[List[str]] = None,
+    ignore_ids: Optional[List[str]] = None,
+    rolename: Optional[str] = None,
+    assuming_session: Optional[Session] = None,
+    raise_exception: bool = False,
+    org_master: bool = True,
+) -> Callable:
+    def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
-        # TODO return a dict of CoveSession?
-        def wrapper(*args, **kwargs) -> Dict[str, Any]:
+        def wrapper(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+            #  Check type of ignore_ids for safety
+            if ignore_ids:
+                if not isinstance(ignore_ids, list):
+                    raise TypeError("ignore_ids must be a list of account IDs")
+                for account_id in ignore_ids:
+                    if len(account_id) != 12:
+                        raise TypeError(
+                            "All ignore_id in list must be 12 character strings"
+                        )
+                    if not isinstance(account_id, str):
+                        raise TypeError("All ignore_id list entries must be strings")
+
             # If undefined, use credentials from boto3 credential chain
             if not assuming_session:
                 logger.info("No Boto3 session argument: using credential chain")
