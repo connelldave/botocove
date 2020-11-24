@@ -3,9 +3,10 @@ import functools
 import logging
 from concurrent import futures
 from functools import partial
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import boto3
+from boto3.session import Session
 from botocore.config import Config
 
 from botocove.cove_session import CoveSession
@@ -16,10 +17,21 @@ DEFAULT_ROLENAME = "OrganizationAccountAccessRole"
 
 config = Config(max_pool_connections=20)
 
+# TODO boto3 types - s/Any/mypy_boto3 types
 
-def _get_cove_session(org_client, sts_client, account_id, rolename) -> CoveSession:
+
+def _get_cove_session(
+    org_client: Any,
+    sts_client: Any,
+    account_id: str,
+    rolename: str,
+    org_master: bool,
+) -> CoveSession:
     role_arn = f"arn:aws:iam::{account_id}:role/{rolename}"
-    account_details = org_client.describe_account(AccountId=account_id)["Account"]
+    if org_master:
+        account_details = org_client.describe_account(AccountId=account_id)["Account"]
+    else:
+        account_details = {"Id": account_id}
     cove_session = CoveSession(account_details)
     try:
         logger.debug(f"Attempting to assume {role_arn}")
@@ -38,14 +50,14 @@ def _get_cove_session(org_client, sts_client, account_id, rolename) -> CoveSessi
 
 
 def _get_org_accounts(
-    org_client, sts_client, ignore_ids: Optional[List[str]]
+    org_client: Any, sts_client: Any, ignore_ids: Optional[List[str]]
 ) -> Set[str]:
-    calling_account = set(sts_client.get_caller_identity()["Account"])
+    calling_account: Set = {sts_client.get_caller_identity()["Account"]}
     accounts_to_ignore = set(calling_account)
 
     if ignore_ids:
         accounts_to_ignore = set(ignore_ids) | accounts_to_ignore
-
+    logger.info(f"{accounts_to_ignore=}")
     all_org_accounts = (
         org_client.get_paginator("list_accounts")
         .paginate()
@@ -60,7 +72,13 @@ def _get_org_accounts(
     return target_accounts
 
 
-async def _get_account_sessions(org_client, sts_client, rolename, accounts):
+async def _get_account_sessions(
+    org_client: Any,
+    sts_client: Any,
+    rolename: str,
+    accounts: Set[str],
+    org_master: bool,
+) -> List[CoveSession]:
     with futures.ThreadPoolExecutor() as executor:
         loop = asyncio.get_running_loop()
         tasks = [
@@ -71,6 +89,7 @@ async def _get_account_sessions(org_client, sts_client, rolename, accounts):
                 sts_client,
                 account_id,
                 rolename,
+                org_master,
             )
             for account_id in accounts
         ]
@@ -78,8 +97,14 @@ async def _get_account_sessions(org_client, sts_client, rolename, accounts):
     return sessions
 
 
-def wrap_func(func, raise_exception, account_session, *args, **kwargs):
-    # A simple wrapper to handle capturing and working with decorated func exceptions
+def wrap_func(
+    func: Callable,
+    raise_exception: bool,
+    account_session: Session,
+    *args: Any,
+    **kwargs: Any,
+) -> Dict[str, Any]:
+    # Wrapper capturing exceptions and formatting results
     try:
         result = func(account_session, *args, **kwargs)
         return account_session.format_cove_result(result)
@@ -93,7 +118,13 @@ def wrap_func(func, raise_exception, account_session, *args, **kwargs):
             return account_session.format_cove_error()
 
 
-async def _async_boto3_call(valid_sessions, raise_exception, func, *args, **kwargs):
+async def _async_boto3_call(
+    valid_sessions: List[CoveSession],
+    raise_exception: bool,
+    func: Callable,
+    *args: Any,
+    **kwargs: Any,
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
     with futures.ThreadPoolExecutor() as executor:
         loop = asyncio.get_running_loop()
         tasks = [
@@ -115,30 +146,40 @@ async def _async_boto3_call(valid_sessions, raise_exception, func, *args, **kwar
 
 
 def cove(
-    _func=None,
+    _func: Optional[Callable] = None,
     *,
-    target_ids=None,
-    ignore_ids=None,
-    rolename=None,
-    org_session=None,
-    raise_exception=False,
-):
-    def decorator(func):
+    target_ids: Optional[List[str]] = None,
+    ignore_ids: Optional[List[str]] = None,
+    rolename: Optional[str] = None,
+    assuming_session: Optional[Session] = None,
+    raise_exception: bool = False,
+    org_master: bool = True,
+) -> Callable:
+    def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
-        # TODO return a dict of CoveSession?
-        def wrapper(*args, **kwargs) -> Dict[str, Any]:
+        def wrapper(*args: Any, **kwargs: Any) -> Dict[str, Any]:
+            #  Check type of ignore_ids for safety
+            if ignore_ids:
+                if not isinstance(ignore_ids, list):
+                    raise TypeError("ignore_ids must be a list of account IDs")
+                for account_id in ignore_ids:
+                    if len(account_id) != 12:
+                        raise TypeError(
+                            "All ignore_id in list must be 12 character strings"
+                        )
+                    if not isinstance(account_id, str):
+                        raise TypeError("All ignore_id list entries must be strings")
+
             # If undefined, use credentials from boto3 credential chain
-            if not org_session:
+            if not assuming_session:
                 logger.info("No Boto3 session argument: using credential chain")
                 sts_client = boto3.client("sts", config=config)
                 org_client = boto3.client("organizations", config=config)
             # Use boto3 session supplied as arg
             else:
-                logger.info(
-                    f"Boto3 session {org_session} argument provided: using to create "
-                )
-                sts_client = org_session.client("sts")
-                org_client = org_session.client("organizations")
+                logger.info(f"Using provided Boto3 session {assuming_session}")
+                sts_client = assuming_session.client("sts")
+                org_client = assuming_session.client("organizations")
 
             # Create a set of account ID's to run function against
             if not target_ids:
@@ -163,13 +204,13 @@ def cove(
 
             logger.info(
                 f"Running func {func.__name__} against accounts passing arguments: "
-                f"{role_to_assume=} {target_ids=} {ignore_ids=} {org_session=}"
+                f"{role_to_assume=} {target_ids=} {ignore_ids=} {assuming_session=}"
             )
             logger.debug(f"accounts targeted are {account_ids}")
 
             sessions = asyncio.run(
                 _get_account_sessions(
-                    org_client, sts_client, role_to_assume, account_ids
+                    org_client, sts_client, role_to_assume, account_ids, org_master
                 )
             )
             valid_sessions = [

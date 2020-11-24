@@ -5,13 +5,16 @@ from botocore.exceptions import ClientError
 
 
 class CoveSession(Session):
-    """Enriches a boto3 Session with Organization data from Master account"""
+    """Enriches a boto3 Session with account data from Master account if run from
+    an organization master.
+    Provides internal helper functions for managing concurrent boto3 calls
+    """
 
     assume_role_success: bool = False
     session_information: Dict[str, Any] = {}
     stored_exceptions: List[Exception] = []
 
-    def __init__(self, account_details) -> None:
+    def __init__(self, account_details: Dict[str, str]) -> None:
         ignore_fields = ["Arn", "JoinedMethod", "JoinedTimestamp"]
         for key in ignore_fields:
             account_details.pop(key, "Key not found")
@@ -21,7 +24,7 @@ class CoveSession(Session):
         # Overwrite boto3's repr to avoid AttributeErrors
         return f"{self.__class__.__name__}(account_id={self.session_information['Id']})"
 
-    def initialize_boto_session(self, *args, **kwargs) -> None:
+    def initialize_boto_session(self, *args: Any, **kwargs: Any) -> None:
         # Inherit from and initialize standard boto3 Session object
         super().__init__(*args, **kwargs)
         self.assume_role_success = True
@@ -33,7 +36,7 @@ class CoveSession(Session):
         else:
             self.stored_exceptions = [exception]
 
-    def format_cove_result(self, result) -> Dict[str, Any]:
+    def format_cove_result(self, result: Any) -> Dict[str, Any]:
         self.session_information["Result"] = result
         return self.session_information
 
