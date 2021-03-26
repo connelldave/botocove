@@ -5,7 +5,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-
+## [1.2.0] - 2021-26-3
+### Added
+- Add a TypedDict for CoveOutput
+### Fixed
+- Fixed bug where passing empty list to target IDs would fetch all org accounts.
+- Improved fixture breaking Boto3 credentials in tests
 ## [1.1.0] - 2020-14-8
 ### Added
 - Support for assuming roles from accounts that are not AWS Organization masters

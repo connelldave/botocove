@@ -48,6 +48,18 @@ def test_target_ids(mock_boto3_session) -> None:
     assert len(cove_output["Results"]) == 1
 
 
+def test_empty_target_ids(mock_boto3_session) -> None:
+    @cove(assuming_session=mock_boto3_session, target_ids=[])
+    def simple_func(session) -> str:
+        return "hello"
+
+    with pytest.raises(
+        ValueError,
+        match="There are no eligible account ids to run decorated func simple_func against",  # noqa: E501
+    ):
+        simple_func()
+
+
 def test_ignore_ids(mock_boto3_session) -> None:
     @cove(assuming_session=mock_boto3_session, ignore_ids=["123123123123"])
     def simple_func(session) -> str:
@@ -69,9 +81,25 @@ def test_target_and_ignore_ids(mock_boto3_session) -> None:
         return "hello"
 
     cove_output = simple_func()
-    # Two in mock response, four in targets, one of which is ignored.
-    # simple_func calls == three targeted AWS accounts
-    assert len(cove_output) == 3
+    # Two in mock response, two in targets, one of which is ignored.
+    # simple_func calls == one target AWS accounts
+    assert len(cove_output["Results"]) == 1
+
+
+def test_empty_ignore_ids(mock_boto3_session) -> None:
+    @cove(
+        assuming_session=mock_boto3_session,
+        target_ids=["123123123123", "456456456456"],
+        ignore_ids=[],
+    )
+    def simple_func(session) -> str:
+        return "hello"
+
+    cove_output = simple_func()
+    # Two in mock response, four in targets
+    # simple_func calls == two targeted AWS accounts
+    print(cove_output)
+    assert len(cove_output["Results"]) == 2
 
 
 def test_decorated_simple_func_passed_args(mock_boto3_session) -> None:
