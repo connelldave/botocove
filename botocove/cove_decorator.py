@@ -3,7 +3,7 @@ import functools
 import logging
 from concurrent import futures
 from functools import partial
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TypedDict
 
 import boto3
 from boto3.session import Session
@@ -16,6 +16,13 @@ logger = logging.getLogger(__name__)
 DEFAULT_ROLENAME = "OrganizationAccountAccessRole"
 
 config = Config(max_pool_connections=20)
+
+
+class CoveOutput(TypedDict):
+    Results: List[Dict[str, Any]]
+    Exceptions: List[Dict[str, Any]]
+    FailedAssumeRole: List[Dict[str, Any]]
+
 
 # TODO boto3 types - s/Any/mypy_boto3 types
 
@@ -100,7 +107,7 @@ async def _get_account_sessions(
 def wrap_func(
     func: Callable,
     raise_exception: bool,
-    account_session: Session,
+    account_session: CoveSession,
     *args: Any,
     **kwargs: Any,
 ) -> Dict[str, Any]:
@@ -157,19 +164,7 @@ def cove(
 ) -> Callable:
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Dict[str, Any]:
-            #  Check type of ignore_ids for safety
-            if ignore_ids:
-                if not isinstance(ignore_ids, list):
-                    raise TypeError("ignore_ids must be a list of account IDs")
-                for account_id in ignore_ids:
-                    if len(account_id) != 12:
-                        raise TypeError(
-                            "All ignore_id in list must be 12 character strings"
-                        )
-                    if not isinstance(account_id, str):
-                        raise TypeError("All ignore_id list entries must be strings")
-
+        def wrapper(*args: Any, **kwargs: Any) -> CoveOutput:
             # If undefined, use credentials from boto3 credential chain
             if not assuming_session:
                 logger.info("No Boto3 session argument: using credential chain")
@@ -182,12 +177,24 @@ def cove(
                 org_client = assuming_session.client("organizations")
 
             # Create a set of account ID's to run function against
-            if not target_ids:
+            if target_ids is None:
+                # No target_ids passed
                 account_ids = _get_org_accounts(org_client, sts_client, ignore_ids)
-            elif ignore_ids:
-                account_ids = set(target_ids) - set(ignore_ids)
             else:
                 account_ids = set(target_ids)
+
+            #  Check type of ignore_ids for safety
+            if ignore_ids:
+                if not isinstance(ignore_ids, list):
+                    raise TypeError("ignore_ids must be a list of account IDs")
+                for account_id in ignore_ids:
+                    if len(account_id) != 12:
+                        raise TypeError(
+                            "All ignore_id in list must be 12 character strings"
+                        )
+                    if not isinstance(account_id, str):
+                        raise TypeError("All ignore_id list entries must be strings")
+                account_ids = account_ids - set(ignore_ids)
 
             if not account_ids:
                 raise ValueError(
@@ -208,6 +215,7 @@ def cove(
             )
             logger.debug(f"accounts targeted are {account_ids}")
 
+            # Get sessions in all targeted accounts
             sessions = asyncio.run(
                 _get_account_sessions(
                     org_client, sts_client, role_to_assume, account_ids, org_master
@@ -234,16 +242,17 @@ def cove(
             if not valid_sessions:
                 raise ValueError("No accounts are accessible: check logs for detail")
 
+            # Run decorated func with all valid sessions
             results, exceptions = asyncio.run(
                 _async_boto3_call(
                     valid_sessions, raise_exception, func, *args, **kwargs
                 )
             )
-            return {
-                "Results": results,
-                "Exceptions": exceptions,
-                "FailedAssumeRole": invalid_sessions,
-            }
+            return CoveOutput(
+                Results=results,
+                Exceptions=exceptions,
+                FailedAssumeRole=invalid_sessions,
+            )
 
         return wrapper
 
