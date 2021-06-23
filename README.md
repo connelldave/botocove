@@ -116,6 +116,10 @@ be ignored.
 An IAM role name that will be attempted to assume in all target accounts. 
 Defaults to the AWS Organization default, `OrganizationAccountAccessRole`.
 
+`role_session_name`: Optional[str]
+An IAM role session name that will be passed to de `sts.assume_role()` call. 
+Defaults to the AWS Organization default, `OrganizationAccountAccessRole`.
+
 `assuming_session`: Optional[Session]
 A Boto3 `Session` object that will be used to call `sts:assumerole`. If not
 provided, defaults to standard boto3 credential chain.
