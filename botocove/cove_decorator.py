@@ -32,17 +32,18 @@ def _get_cove_session(
     sts_client: Any,
     account_id: str,
     rolename: str,
+    role_session_name: str,
     org_master: bool,
 ) -> CoveSession:
     role_arn = f"arn:aws:iam::{account_id}:role/{rolename}"
     if org_master:
         account_details = org_client.describe_account(AccountId=account_id)["Account"]
     else:
-        account_details = {"Id": account_id}
+        account_details = {"Id": account_id, "RoleSessionName" : role_session_name}
     cove_session = CoveSession(account_details)
     try:
         logger.debug(f"Attempting to assume {role_arn}")
-        creds = sts_client.assume_role(RoleArn=role_arn, RoleSessionName=rolename)[
+        creds = sts_client.assume_role(RoleArn=role_arn, RoleSessionName=role_session_name)[
             "Credentials"
         ]
         cove_session.initialize_boto_session(
@@ -83,6 +84,7 @@ async def _get_account_sessions(
     org_client: Any,
     sts_client: Any,
     rolename: str,
+    role_session_name: str,
     accounts: Set[str],
     org_master: bool,
 ) -> List[CoveSession]:
@@ -96,6 +98,7 @@ async def _get_account_sessions(
                 sts_client,
                 account_id,
                 rolename,
+                role_session_name,
                 org_master,
             )
             for account_id in accounts
@@ -158,6 +161,7 @@ def cove(
     target_ids: Optional[List[str]] = None,
     ignore_ids: Optional[List[str]] = None,
     rolename: Optional[str] = None,
+    role_session_name : Optional[str] = None,
     assuming_session: Optional[Session] = None,
     raise_exception: bool = False,
     org_master: bool = True,
@@ -183,7 +187,7 @@ def cove(
             else:
                 account_ids = set(target_ids)
 
-            #  Check type of ignore_ids for safety
+            #  Check type of ignore_ids for safety
             if ignore_ids:
                 if not isinstance(ignore_ids, list):
                     raise TypeError("ignore_ids must be a list of account IDs")
@@ -209,16 +213,24 @@ def cove(
                 # Use supplied role name
                 role_to_assume = rolename
 
+            # Role session name to set for each account
+            if not role_session_name:
+                # If undefined, use the same name as the role name
+                session_name = role_to_assume
+            else:
+                # Otherwise, use supplied role session name
+                session_name = role_session_name
+
             logger.info(
                 f"Running func {func.__name__} against accounts passing arguments: "
-                f"{role_to_assume=} {target_ids=} {ignore_ids=} {assuming_session=}"
+                f"{role_to_assume=} {session_name=} {target_ids=} {ignore_ids=} {assuming_session=}"
             )
             logger.debug(f"accounts targeted are {account_ids}")
 
             # Get sessions in all targeted accounts
             sessions = asyncio.run(
                 _get_account_sessions(
-                    org_client, sts_client, role_to_assume, account_ids, org_master
+                    org_client, sts_client, role_to_assume, session_name, account_ids, org_master
                 )
             )
             valid_sessions = [
