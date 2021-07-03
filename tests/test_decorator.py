@@ -115,10 +115,15 @@ def test_decorated_simple_func_passed_args(mock_boto3_session) -> None:
 
 def test_decorated_simple_func_passed_session_name(mock_boto3_session) -> None:
     session_name = "testSessionName"
-    @cove(assuming_session=mock_boto3_session, role_session_name=session_name, org_master=False)
+
+    @cove(
+        assuming_session=mock_boto3_session,
+        role_session_name=session_name,
+        org_master=False,
+    )
     def simple_func(session):
         return session.session_information["RoleSessionName"]
 
     cove_output = simple_func()
-    
+
     assert all(x["Result"] == session_name for x in cove_output["Results"])
