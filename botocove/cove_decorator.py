@@ -39,13 +39,13 @@ def _get_cove_session(
     if org_master:
         account_details = org_client.describe_account(AccountId=account_id)["Account"]
     else:
-        account_details = {"Id": account_id, "RoleSessionName" : role_session_name}
+        account_details = {"Id": account_id, "RoleSessionName": role_session_name}
     cove_session = CoveSession(account_details)
     try:
         logger.debug(f"Attempting to assume {role_arn}")
-        creds = sts_client.assume_role(RoleArn=role_arn, RoleSessionName=role_session_name)[
-            "Credentials"
-        ]
+        creds = sts_client.assume_role(
+            RoleArn=role_arn, RoleSessionName=role_session_name
+        )["Credentials"]
         cove_session.initialize_boto_session(
             aws_access_key_id=creds["AccessKeyId"],
             aws_secret_access_key=creds["SecretAccessKey"],
@@ -161,7 +161,7 @@ def cove(
     target_ids: Optional[List[str]] = None,
     ignore_ids: Optional[List[str]] = None,
     rolename: Optional[str] = None,
-    role_session_name : Optional[str] = None,
+    role_session_name: Optional[str] = None,
     assuming_session: Optional[Session] = None,
     raise_exception: bool = False,
     org_master: bool = True,
@@ -223,14 +223,20 @@ def cove(
 
             logger.info(
                 f"Running func {func.__name__} against accounts passing arguments: "
-                f"{role_to_assume=} {session_name=} {target_ids=} {ignore_ids=} {assuming_session=}"
+                f"{role_to_assume=} {session_name=} {target_ids=} {ignore_ids=} "
+                f"{assuming_session=}"
             )
             logger.debug(f"accounts targeted are {account_ids}")
 
             # Get sessions in all targeted accounts
             sessions = asyncio.run(
                 _get_account_sessions(
-                    org_client, sts_client, role_to_assume, session_name, account_ids, org_master
+                    org_client,
+                    sts_client,
+                    role_to_assume,
+                    session_name,
+                    account_ids,
+                    org_master,
                 )
             )
             valid_sessions = [
