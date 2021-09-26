@@ -8,6 +8,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TypedDict
 import boto3
 from boto3.session import Session
 from botocore.config import Config
+from botocore.exceptions import ClientError
 
 from botocove.cove_session import CoveSession
 
@@ -37,7 +38,17 @@ def _get_cove_session(
 ) -> CoveSession:
     role_arn = f"arn:aws:iam::{account_id}:role/{rolename}"
     if org_master:
-        account_details = org_client.describe_account(AccountId=account_id)["Account"]
+        try:
+            account_details = org_client.describe_account(AccountId=account_id)[
+                "Account"
+            ]
+        except ClientError:
+            logger.exception(f"Failed to call describe_account for {account_id}")
+            account_details = {
+                "Id": account_id,
+                "RoleSessionName": role_session_name,
+            }
+
     else:
         account_details = {"Id": account_id, "RoleSessionName": role_session_name}
     cove_session = CoveSession(account_details)
