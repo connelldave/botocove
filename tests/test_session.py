@@ -2,6 +2,7 @@ from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
+from botocore.exceptions import ClientError
 
 from botocove.cove_decorator import cove
 
@@ -45,6 +46,31 @@ def test_session_result_formatter(patch_boto3_client) -> None:
             "Name": "an-account-name",
             "Result": "test-string",
             "Status": "ACTIVE",
+        }
+    ]
+    assert cove_output["Results"] == expected
+
+
+def test_session_result_error_handler(patch_boto3_client) -> None:
+    # Raise an exception instead of an expected response from boto3
+    patch_boto3_client.client.return_value.describe_account.side_effect = MagicMock(
+        side_effect=ClientError(
+            {"Error": {"Message": "broken!", "Code": "OhNo"}}, "describe_account"
+        )
+    )
+
+    @cove
+    def simple_func(session, a_string):
+        return a_string
+
+    # Only one account for simplicity
+    cove_output = simple_func("test-string")
+    expected = [
+        {
+            "Id": "12345689012",
+            "RoleSessionName": "OrganizationAccountAccessRole",
+            "AssumeRoleSuccess": True,
+            "Result": "test-string",
         }
     ]
     assert cove_output["Results"] == expected
