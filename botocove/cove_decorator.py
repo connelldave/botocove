@@ -48,11 +48,15 @@ def _get_cove_session(
             account_details = {
                 "Id": account_id,
                 "RoleSessionName": role_session_name,
-                "Policy": session_policy
+                "Policy": session_policy,
             }
 
     else:
-        account_details = {"Id": account_id, "RoleSessionName": role_session_name, "Policy": session_policy}
+        account_details = {
+            "Id": account_id,
+            "RoleSessionName": role_session_name,
+            "Policy": session_policy,
+        }
     cove_session = CoveSession(account_details)
     try:
         logger.debug(f"Attempting to assume {role_arn}")
@@ -60,13 +64,16 @@ def _get_cove_session(
         # Policy is optional, but passing None is not allowed.
         # session_policy defaults to None.
         # session_policy is a required parameter in botocove internal functions.
-        creds = sts_client.assume_role(**{
-            k: v for k, v in [
+        assume_role_args = {
+            k: v
+            for k, v in [
                 ("RoleArn", role_arn),
                 ("RoleSessionName", role_session_name),
-                ("Policy", session_policy)
-            ] if v is not None
-        })["Credentials"]
+                ("Policy", session_policy),
+            ]
+            if v is not None
+        }
+        creds = sts_client.assume_role(**assume_role_args)["Credentials"]
         cove_session.initialize_boto_session(
             aws_access_key_id=creds["AccessKeyId"],
             aws_secret_access_key=creds["SecretAccessKey"],

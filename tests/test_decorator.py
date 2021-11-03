@@ -130,7 +130,7 @@ def test_decorated_simple_func_passed_session_name(mock_boto3_session) -> None:
 
 
 def test_decorated_simple_func_passed_session_policy(mock_boto3_session) -> None:
-    session_policy = '{"Version":"2012-10-17","Statement":[{"Effect":"Deny","Action":"*","Resource":"*"}]}'
+    session_policy = '{"Version":"2012-10-17","Statement":[{"Effect":"Deny","Action":"*","Resource":"*"}]}'  # noqa: E501
 
     @cove(
         assuming_session=mock_boto3_session,
