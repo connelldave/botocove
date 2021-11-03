@@ -69,6 +69,7 @@ def test_session_result_error_handler(patch_boto3_client) -> None:
         {
             "Id": "12345689012",
             "RoleSessionName": "OrganizationAccountAccessRole",
+            "Policy": None,
             "AssumeRoleSuccess": True,
             "Result": "test-string",
         }

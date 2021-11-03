@@ -34,6 +34,7 @@ def _get_cove_session(
     account_id: str,
     rolename: str,
     role_session_name: str,
+    session_policy: str,
     org_master: bool,
 ) -> CoveSession:
     role_arn = f"arn:aws:iam::{account_id}:role/{rolename}"
@@ -47,16 +48,25 @@ def _get_cove_session(
             account_details = {
                 "Id": account_id,
                 "RoleSessionName": role_session_name,
+                "Policy": session_policy
             }
 
     else:
-        account_details = {"Id": account_id, "RoleSessionName": role_session_name}
+        account_details = {"Id": account_id, "RoleSessionName": role_session_name, "Policy": session_policy}
     cove_session = CoveSession(account_details)
     try:
         logger.debug(f"Attempting to assume {role_arn}")
-        creds = sts_client.assume_role(
-            RoleArn=role_arn, RoleSessionName=role_session_name
-        )["Credentials"]
+        # This calling style avoids a ParamValidationError from botocore.
+        # Policy is optional, but passing None is not allowed.
+        # session_policy defaults to None.
+        # session_policy is a required parameter in botocove internal functions.
+        creds = sts_client.assume_role(**{
+            k: v for k, v in [
+                ("RoleArn", role_arn),
+                ("RoleSessionName", role_session_name),
+                ("Policy", session_policy)
+            ] if v is not None
+        })["Credentials"]
         cove_session.initialize_boto_session(
             aws_access_key_id=creds["AccessKeyId"],
             aws_secret_access_key=creds["SecretAccessKey"],
@@ -96,6 +106,7 @@ async def _get_account_sessions(
     sts_client: Any,
     rolename: str,
     role_session_name: str,
+    session_policy: str,
     accounts: Set[str],
     org_master: bool,
 ) -> List[CoveSession]:
@@ -110,6 +121,7 @@ async def _get_account_sessions(
                 account_id,
                 rolename,
                 role_session_name,
+                session_policy,
                 org_master,
             )
             for account_id in accounts
@@ -173,6 +185,7 @@ def cove(
     ignore_ids: Optional[List[str]] = None,
     rolename: Optional[str] = None,
     role_session_name: Optional[str] = None,
+    session_policy: Optional[str] = None,
     assuming_session: Optional[Session] = None,
     raise_exception: bool = False,
     org_master: bool = True,
@@ -246,6 +259,7 @@ def cove(
                     sts_client,
                     role_to_assume,
                     session_name,
+                    session_policy,
                     account_ids,
                     org_master,
                 )
