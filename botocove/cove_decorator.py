@@ -34,7 +34,7 @@ def _get_cove_session(
     account_id: str,
     rolename: str,
     role_session_name: str,
-    session_policy: str,
+    session_policy: Optional[str],
     org_master: bool,
 ) -> CoveSession:
     role_arn = f"arn:aws:iam::{account_id}:role/{rolename}"
@@ -113,7 +113,7 @@ async def _get_account_sessions(
     sts_client: Any,
     rolename: str,
     role_session_name: str,
-    session_policy: str,
+    session_policy: Optional[str],
     accounts: Set[str],
     org_master: bool,
 ) -> List[CoveSession]:
