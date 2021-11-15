@@ -31,4 +31,4 @@ jobs:
         run: poetry run isort . --check
 
       - name: Lint with mypy
-        run: poetry run mypy botocove
+        run: poetry run mypy .

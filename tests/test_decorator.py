@@ -1,8 +1,10 @@
+from datetime import datetime
+from typing import Optional
 from unittest.mock import MagicMock
 
 import pytest
 
-from botocove import cove
+from botocove import CoveSession, cove
 
 
 @pytest.fixture()
@@ -18,8 +20,28 @@ def mock_boto3_session() -> MagicMock:
         list_accounts_result
     )
     describe_account_results = [
-        {"Account": {"Id": "123123123123"}},
-        {"Account": {"Id": "456456456456"}},
+        {
+            "Account": {
+                "Id": "123123123123",
+                "Arn": "hello-arn",
+                "Email": "email@address.com",
+                "Name": "an-account-name",
+                "Status": "ACTIVE",
+                "JoinedMethod": "CREATED",
+                "JoinedTimestamp": datetime(2015, 1, 1),
+            }
+        },
+        {
+            "Account": {
+                "Id": "456456456456",
+                "Arn": "hello-arn",
+                "Email": "email@address.com",
+                "Name": "an-account-name",
+                "Status": "ACTIVE",
+                "JoinedMethod": "CREATED",
+                "JoinedTimestamp": datetime(2015, 1, 1),
+            }
+        },
     ]
     mock_session.client.return_value.describe_account.side_effect = (
         describe_account_results
@@ -27,9 +49,9 @@ def mock_boto3_session() -> MagicMock:
     return mock_session
 
 
-def test_decorated_simple_func(mock_boto3_session) -> None:
+def test_decorated_simple_func(mock_boto3_session: MagicMock) -> None:
     @cove(assuming_session=mock_boto3_session)
-    def simple_func(session) -> str:
+    def simple_func(session: CoveSession) -> str:
         return "hello"
 
     cove_output = simple_func()
@@ -37,9 +59,9 @@ def test_decorated_simple_func(mock_boto3_session) -> None:
     assert len(cove_output["Results"]) == 2
 
 
-def test_target_ids(mock_boto3_session) -> None:
+def test_target_ids(mock_boto3_session: MagicMock) -> None:
     @cove(assuming_session=mock_boto3_session, target_ids=["1"])
-    def simple_func(session) -> str:
+    def simple_func(session: CoveSession) -> str:
         return "hello"
 
     cove_output = simple_func()
@@ -48,21 +70,21 @@ def test_target_ids(mock_boto3_session) -> None:
     assert len(cove_output["Results"]) == 1
 
 
-def test_empty_target_ids(mock_boto3_session) -> None:
+def test_empty_target_ids(mock_boto3_session: MagicMock) -> None:
     @cove(assuming_session=mock_boto3_session, target_ids=[])
-    def simple_func(session) -> str:
+    def simple_func(session: CoveSession) -> str:
         return "hello"
 
     with pytest.raises(
         ValueError,
-        match="There are no eligible account ids to run decorated func simple_func against",  # noqa: E501
+        match="There are no eligible account ids to run decorated func against",  # noqa: E501
     ):
         simple_func()
 
 
-def test_ignore_ids(mock_boto3_session) -> None:
+def test_ignore_ids(mock_boto3_session: MagicMock) -> None:
     @cove(assuming_session=mock_boto3_session, ignore_ids=["123123123123"])
-    def simple_func(session) -> str:
+    def simple_func(session: CoveSession) -> str:
         return "hello"
 
     cove_output = simple_func()
@@ -71,13 +93,13 @@ def test_ignore_ids(mock_boto3_session) -> None:
     assert len(cove_output["Results"]) == 1
 
 
-def test_target_and_ignore_ids(mock_boto3_session) -> None:
+def test_target_and_ignore_ids(mock_boto3_session: MagicMock) -> None:
     @cove(
         assuming_session=mock_boto3_session,
         target_ids=["123123123123", "456456456456"],
         ignore_ids=["456456456456"],
     )
-    def simple_func(session) -> str:
+    def simple_func(session: CoveSession) -> str:
         return "hello"
 
     cove_output = simple_func()
@@ -86,13 +108,13 @@ def test_target_and_ignore_ids(mock_boto3_session) -> None:
     assert len(cove_output["Results"]) == 1
 
 
-def test_empty_ignore_ids(mock_boto3_session) -> None:
+def test_empty_ignore_ids(mock_boto3_session: MagicMock) -> None:
     @cove(
         assuming_session=mock_boto3_session,
         target_ids=["123123123123", "456456456456"],
         ignore_ids=[],
     )
-    def simple_func(session) -> str:
+    def simple_func(session: CoveSession) -> str:
         return "hello"
 
     cove_output = simple_func()
@@ -102,18 +124,31 @@ def test_empty_ignore_ids(mock_boto3_session) -> None:
     assert len(cove_output["Results"]) == 2
 
 
-def test_decorated_simple_func_passed_args(mock_boto3_session) -> None:
+def test_decorated_simple_func_passed_args(mock_boto3_session: MagicMock) -> None:
     @cove(assuming_session=mock_boto3_session, ignore_ids=["456456456456"])
-    def simple_func(session, arg1: int, arg2: int, arg3: int) -> int:
+    def simple_func(session: CoveSession, arg1: int, arg2: int, arg3: int) -> int:
         return arg1 + arg2 + arg3
 
     cove_output = simple_func(1, 2, 3)
-    expected = [{"Id": "123123123123", "AssumeRoleSuccess": True, "Result": 6}]
+    expected = [
+        {
+            "Id": "123123123123",
+            "Arn": "hello-arn",
+            "Email": "email@address.com",
+            "Name": "an-account-name",
+            "Status": "ACTIVE",
+            "AssumeRoleSuccess": True,
+            "Result": 6,
+            "RoleSessionName": "OrganizationAccountAccessRole",
+        }
+    ]
     # Two simple_func calls == two mock AWS accounts
     assert cove_output["Results"] == expected
 
 
-def test_decorated_simple_func_passed_session_name(mock_boto3_session) -> None:
+def test_decorated_simple_func_passed_session_name(
+    mock_boto3_session: MagicMock,
+) -> None:
     session_name = "testSessionName"
 
     @cove(
@@ -121,9 +156,9 @@ def test_decorated_simple_func_passed_session_name(mock_boto3_session) -> None:
         role_session_name=session_name,
         org_master=False,
     )
-    def simple_func(session):
-        return session.session_information["RoleSessionName"]
+    def simple_func(session: CoveSession) -> Optional[str]:
+        return session.session_information.RoleSessionName
 
     cove_output = simple_func()
-
+    print(cove_output)
     assert all(x["Result"] == session_name for x in cove_output["Results"])
