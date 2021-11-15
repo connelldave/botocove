@@ -9,8 +9,8 @@ account.
 - Easy
 - Dolphin Themed 🐬
 
-A simple decorator for functions to remove time and complexity burden. Uses
-`async.io` and `ThreadPoolExecutor` to run boto3 sessions against one to all
+A simple decorator for functions to remove time and complexity burden. Uses 
+`ThreadPoolExecutor` to run boto3 sessions against one to all
 of your AWS accounts at (nearly!) the same speed as running against one.
 
 Wrap a function in `@cove` and inject an assumed role session into every account
@@ -96,7 +96,9 @@ def main():
 ## Arguments
 
 ### Cove
-`@cove()`: Uses boto3 credential chain to get every AWS account within the
+`@cove()`: 
+
+Uses boto3 credential chain to get every AWS account within the
 organization, assume the `OrganizationAccountAccessRole` in it and run the
 wrapped function with that role.
 
@@ -105,35 +107,42 @@ Equivalent to:
     raise_exception=False, org_master=True)`
 
 `target_ids`: Optional[List[str]]
+
 A list of AWS accounts as strings to attempt to assume role in to. When unset,
 default attempts to use every available account ID in an AWS organization.
 
 `ignore_ids`: Optional[List[str]]
+
 A list of AWS account ID's that will not attempt assumption in to. Allows IDs to
 be ignored.
 
 `rolename`: Optional[str]
+
 An IAM role name that will be attempted to assume in all target accounts. 
 Defaults to the AWS Organization default, `OrganizationAccountAccessRole`.
 
 `role_session_name`: Optional[str]
-An IAM role session name that will be passed to the `sts.assume_role()` call. 
-Defaults to the AWS Organization default, `OrganizationAccountAccessRole`.
+
+An IAM role session name that will be passed to each Cove session's `sts.assume_role()` call. 
+Defaults to the name of the role being used if unset.
 
 `assuming_session`: Optional[Session]
-A Boto3 `Session` object that will be used to call `sts:assumerole`. If not
-provided, defaults to standard boto3 credential chain.
+
+A Boto3 `boto3.session.Session()` object that will be used to call `sts:assumerole`. If not
+provided, cove will instantiate one which will use the standard boto3 credential chain.
 
 `raise_exception`: bool
+
 Defaults to False. Default behaviour is that exceptions are not raised from
 decorated function. This is due to `cove` running asynchronously and preferring
 to resolve all tasks and report their results instead of exiting early.
 
 `raise_exception=True` will allow a full stack trace to escape on the first
 exception seen; but will not gracefully or consistently interrupt running tasks.
- It is vital to run interruptible, idempotent code with this argument as `True`.
+It is vital to run interruptible, idempotent code with this argument as `True`.
 
 `org_master`: bool
+
 Defaults to True. When True, will leverage the Boto3 Organizations API to list
 all accounts in the organization, and enrich each `CoveSession` with information
 available (`Id`, `Arn`, `Name`). 
