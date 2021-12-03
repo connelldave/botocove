@@ -160,7 +160,8 @@ def test_decorated_simple_func_passed_session_name(
         return session.session_information.RoleSessionName
 
     cove_output = simple_func()
-    print(cove_output)
+
+    assert cove_output["Exceptions"] == []
     assert all(x["Result"] == session_name for x in cove_output["Results"])
 
 
