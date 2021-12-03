@@ -173,10 +173,11 @@ def test_decorated_simple_func_passed_policy(mock_boto3_session) -> None:
         org_master=False,
     )
     def simple_func(session):
-        return session.session_information["Policy"]
+        return session.session_information.Policy
 
     cove_output = simple_func()
 
+    assert cove_output["Exceptions"] == []
     assert all(x["Result"] == session_policy for x in cove_output["Results"])
 
 
