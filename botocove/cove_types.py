@@ -15,6 +15,7 @@ class CoveSessionInformation(Generic[R]):
     Status: Optional[AccountStatusType] = None
     AssumeRoleSuccess: Optional[bool] = None
     RoleSessionName: Optional[str] = None
+    Policy: Optional[str] = None
     Result: Optional[R] = None
     ExceptionDetails: Optional[Exception] = None
 

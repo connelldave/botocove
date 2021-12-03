@@ -162,3 +162,19 @@ def test_decorated_simple_func_passed_session_name(
     cove_output = simple_func()
     print(cove_output)
     assert all(x["Result"] == session_name for x in cove_output["Results"])
+
+
+def test_decorated_simple_func_passed_policy(mock_boto3_session) -> None:
+    session_policy = '{"Version":"2012-10-17","Statement":[{"Effect":"Deny","Action":"*","Resource":"*"}]}'  # noqa: E501
+
+    @cove(
+        assuming_session=mock_boto3_session,
+        policy=session_policy,
+        org_master=False,
+    )
+    def simple_func(session):
+        return session.session_information["Policy"]
+
+    cove_output = simple_func()
+
+    assert all(x["Result"] == session_policy for x in cove_output["Results"])
