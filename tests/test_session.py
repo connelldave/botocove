@@ -79,6 +79,33 @@ def test_session_result_formatter_with_policy(patch_boto3_client: MagicMock) -> 
     assert cove_output["Results"] == expected
 
 
+def test_session_result_formatter_with_policy_arn(
+    patch_boto3_client: MagicMock,
+) -> None:
+    session_policy_arns = [{"arn": "arn:aws:iam::aws:policy/IAMReadOnlyAccess"}]
+
+    @cove(policy_arns=session_policy_arns)
+    def simple_func(session: CoveSession, a_string: str) -> str:
+        return a_string
+
+    # Only one account for simplicity
+    cove_output = simple_func("test-string")
+    expected = [
+        {
+            "Id": "12345689012",
+            "Arn": "hello-arn",
+            "Email": "email@address.com",
+            "Name": "an-account-name",
+            "Status": "ACTIVE",
+            "AssumeRoleSuccess": True,
+            "Result": "test-string",
+            "RoleSessionName": "OrganizationAccountAccessRole",
+            "PolicyArns": session_policy_arns,
+        }
+    ]
+    assert cove_output["Results"] == expected
+
+
 def test_session_result_error_handler(patch_boto3_client: MagicMock) -> None:
     # Raise an exception instead of an expected response from boto3
     patch_boto3_client.client.return_value.describe_account.side_effect = MagicMock(
