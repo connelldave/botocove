@@ -27,6 +27,7 @@ class CoveSessions(object):
         ignore_ids: Optional[List[str]],
         rolename: Optional[str],
         role_session_name: Optional[str],
+        policy: Optional[str],
         assuming_session: Optional[Session],
         org_master: bool,
     ) -> None:
@@ -43,6 +44,7 @@ class CoveSessions(object):
 
         self.role_to_assume = rolename or DEFAULT_ROLENAME
         self.role_session_name = role_session_name or self.role_to_assume
+        self.policy = policy
 
         self.org_master = org_master
 
@@ -52,6 +54,7 @@ class CoveSessions(object):
             f"{self.role_session_name=} {self.target_accounts=} "
             f"{self.provided_ignore_ids=}"
         )
+        logger.info(f"Session policy: {self.policy=}")
 
         with futures.ThreadPoolExecutor(max_workers=20) as executor:
             sessions = list(
@@ -75,7 +78,9 @@ class CoveSessions(object):
     def _cove_session_factory(self, account_id: str) -> CoveSession:
         role_arn = f"arn:aws:iam::{account_id}:role/{self.role_to_assume}"
         account_details: CoveSessionInformation = CoveSessionInformation(
-            Id=account_id, RoleSessionName=self.role_session_name
+            Id=account_id,
+            RoleSessionName=self.role_session_name,
+            Policy=self.policy,
         )
 
         if self.org_master:
@@ -94,9 +99,18 @@ class CoveSessions(object):
 
         try:
             logger.debug(f"Attempting to assume {role_arn}")
-            creds = self.sts_client.assume_role(
-                RoleArn=role_arn, RoleSessionName=self.role_session_name
-            )["Credentials"]
+            # This calling style avoids a ParamValidationError from botocore.
+            # Policy is optional, but passing None is not allowed.
+            assume_role_args = {
+                k: v
+                for k, v in [
+                    ("RoleArn", role_arn),
+                    ("RoleSessionName", self.role_session_name),
+                    ("Policy", self.policy),
+                ]
+                if v is not None
+            }
+            creds = self.sts_client.assume_role(**assume_role_args)["Credentials"]
             cove_session.initialize_boto_session(
                 aws_access_key_id=creds["AccessKeyId"],
                 aws_secret_access_key=creds["SecretAccessKey"],
