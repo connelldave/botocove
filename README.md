@@ -103,8 +103,9 @@ organization, assume the `OrganizationAccountAccessRole` in it and run the
 wrapped function with that role.
 
 Equivalent to:
-`@cove(target_ids=None, ignore_ids=None, rolename=None, assuming_session=None, 
-    raise_exception=False, org_master=True)`
+`@cove(target_ids=None, ignore_ids=None, rolename=None, role_session_name=rolename,
+    policy=None, policy_arns=None, assuming_session=None, raise_exception=False,
+    org_master=True)`
 
 `target_ids`: Optional[List[str]]
 
@@ -125,6 +126,14 @@ Defaults to the AWS Organization default, `OrganizationAccountAccessRole`.
 
 An IAM role session name that will be passed to each Cove session's `sts.assume_role()` call. 
 Defaults to the name of the role being used if unset.
+
+`policy`: Optional[str]
+
+A policy document that will be used as a session policy in each Cove session's `sts.assume_role()` call. Unless the value is None, it is passed through via the Policy parameter.
+
+`policy_arns`: Optional[List[PolicyArn]]
+
+A list of managed policy ARNs that will be used as a session policy in each Cove session's `sts.assume_role()` call. Unless the value is None, it is passed through via the PolicyArns parameter.
 
 `assuming_session`: Optional[Session]
 
