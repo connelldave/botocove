@@ -12,7 +12,7 @@ from mypy_boto3_sts.client import STSClient
 from tqdm import tqdm
 
 from botocove.cove_session import CoveSession
-from botocove.cove_types import CoveResults, CoveSessionInformation
+from botocove.cove_types import CoveResults, CoveSessionInformation, PolicyArn
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ class CoveSessions(object):
         rolename: Optional[str],
         role_session_name: Optional[str],
         policy: Optional[str],
+        policy_arns: Optional[List[PolicyArn]],
         assuming_session: Optional[Session],
         org_master: bool,
     ) -> None:
@@ -45,6 +46,7 @@ class CoveSessions(object):
         self.role_to_assume = rolename or DEFAULT_ROLENAME
         self.role_session_name = role_session_name or self.role_to_assume
         self.policy = policy
+        self.policy_arns = policy_arns
 
         self.org_master = org_master
 
@@ -54,7 +56,7 @@ class CoveSessions(object):
             f"{self.role_session_name=} {self.target_accounts=} "
             f"{self.provided_ignore_ids=}"
         )
-        logger.info(f"Session policy: {self.policy=}")
+        logger.info(f"Session policy: {self.policy_arns=} {self.policy=}")
 
         with futures.ThreadPoolExecutor(max_workers=20) as executor:
             sessions = list(
@@ -81,6 +83,7 @@ class CoveSessions(object):
             Id=account_id,
             RoleSessionName=self.role_session_name,
             Policy=self.policy,
+            PolicyArns=self.policy_arns,
         )
 
         if self.org_master:
@@ -100,13 +103,14 @@ class CoveSessions(object):
         try:
             logger.debug(f"Attempting to assume {role_arn}")
             # This calling style avoids a ParamValidationError from botocore.
-            # Policy is optional, but passing None is not allowed.
+            # Passing None is not allowed for the optional parameters.
             assume_role_args = {
                 k: v
                 for k, v in [
                     ("RoleArn", role_arn),
                     ("RoleSessionName", self.role_session_name),
                     ("Policy", self.policy),
+                    ("PolicyArns", self.policy_arns),
                 ]
                 if v is not None
             }

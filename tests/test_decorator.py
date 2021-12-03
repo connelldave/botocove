@@ -178,3 +178,20 @@ def test_decorated_simple_func_passed_policy(mock_boto3_session) -> None:
     cove_output = simple_func()
 
     assert all(x["Result"] == session_policy for x in cove_output["Results"])
+
+
+def test_decorated_simple_func_passed_policy_arn(mock_boto3_session) -> None:
+    session_policy_arns = [{"arn": "arn:aws:iam::aws:policy/IAMReadOnlyAccess"}]
+
+    @cove(
+        assuming_session=mock_boto3_session,
+        policy_arns=session_policy_arns,
+        org_master=False,
+    )
+    def simple_func(session):
+        return session.session_information.PolicyArns
+
+    cove_output = simple_func()
+
+    assert cove_output["Exceptions"] == []
+    assert all(x["Result"] == session_policy_arns for x in cove_output["Results"])
