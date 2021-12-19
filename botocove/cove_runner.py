@@ -1,6 +1,6 @@
 import logging
 from concurrent import futures
-from typing import Any, Callable, List, Tuple
+from typing import Any, Callable, List, Tuple, Iterable
 
 from tqdm import tqdm
 
@@ -32,11 +32,7 @@ class CoveRunner(object):
 
     def run_cove_function(self) -> CoveFunctionOutput:
         # Run decorated func with all valid sessions
-        results, exceptions = self._async_boto3_call()
-        return CoveFunctionOutput(
-            Results=results,
-            Exceptions=exceptions,
-        )
+        return self._async_boto3_call()
 
     def cove_exception_wrapper_func(
         self,
@@ -59,19 +55,14 @@ class CoveRunner(object):
 
     def _async_boto3_call(
         self,
-    ) -> Tuple[CoveResults, CoveResults]:
+    ) -> Iterable[CoveSessionInformation]:
         with futures.ThreadPoolExecutor(max_workers=20) as executor:
-            completed: CoveResults = list(
-                tqdm(
-                    executor.map(self.cove_exception_wrapper_func, self.sessions),
-                    total=len(self.sessions),
-                    desc="Executing function",
-                    colour="#ff69b4",  # hotpink
-                )
+            completed: Iterable[CoveSessionInformation] = tqdm(
+                executor.map(self.cove_exception_wrapper_func, self.sessions),
+                total=len(self.sessions),
+                desc="Executing function",
+                colour="#ff69b4",  # hotpink
             )
 
-        successful_results = [
-            result for result in completed if not result.ExceptionDetails
-        ]
-        exceptions = [result for result in completed if result.ExceptionDetails]
-        return successful_results, exceptions
+        for c in completed:
+            yield c
