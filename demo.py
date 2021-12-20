@@ -1,35 +1,37 @@
-from botocore.exceptions import ClientError
-from itertools import chain
-import json
-import sys
 import boto3
-from botocove import cove
+from botocove import cove, CoveOutput
 
 @cove()
-def describe_vpcs(session):
-    iam = session.client("ec2", region_name="eu-west-1")
-    all_vpcs = iam.get_paginator("describe_vpcs").paginate().build_full_result()
-    return all_vpcs
-
-@cove()
-def get_iam_user_that_does_not_exist(session):
+def get_iam_users(session):
     iam = session.client("iam", region_name="eu-west-1")
-    return iam.get_user(UserName="does_not_exist")
+    all_users = iam.get_paginator("list_users").paginate().build_full_result()
+    return all_users
 
 def main():
-    # No session passed as the decorator injects it
-    all_results = chain(describe_vpcs(), get_iam_user_that_does_not_exist())
+    all_results = get_iam_users() 
 
-    for r in all_results:
-        json.dump(r, sys.stdout, cls=BotoJSONEncoder)
-        print()
+    if type(all_results) == CoveOutput:
+        # A list of dictionaries for each account, with account details included.
+        # Each account's get_iam_users return is in a "Result" key.
+        print(all_results["Results"]) 
+        
+        # A list of dictionaries for each account that raised an exception
+        print(all_results["Exceptions"])
 
+        # A list of dictionaries for each account that could not be assumed into
+        print(all_results["FailedAssumeRole"])
 
-class BotoJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, ClientError):
-            return repr(obj)
-        return json.JSONEncoder.default(self, obj)
+    else:
+        invalid_sessions, results, exceptions = all_results
+
+        for i in invalid_sessions:
+            print(i)
+        
+        for r in results:
+            print(r)
+        
+        for e in exceptions:
+            print(e)
 
 
 if __name__ == "__main__":
