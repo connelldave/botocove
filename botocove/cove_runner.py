@@ -33,7 +33,11 @@ class CoveRunner(object):
 
     def run_cove_function(self) -> CoveFunctionOutput:
         # Run decorated func with all valid sessions
-        return self._async_boto3_call()
+        results, exceptions = self._async_boto3_call()
+        return CoveFunctionOutput(
+            Results=results,
+            Exceptions=exceptions,
+        )
 
     def cove_exception_wrapper_func(
         self,
