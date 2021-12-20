@@ -48,14 +48,13 @@ def cove(
                 func_kwargs=kwargs,
             )
 
-            output = runner.run_cove_function()
+            results, exceptions = runner.run_cove_function()
 
-            # Rewrite dataclasses into untyped dicts to retain current functionality
-            for f in invalid_sessions:
-                yield dataclass_converter(f)
-
-            for f in output:
-                yield dataclass_converter(f)
+            return (
+                map(dataclass_converter, invalid_sessions),
+                map(dataclass_converter, results),
+                map(dataclass_converter, exceptions)
+            )
 
         return wrapper
 

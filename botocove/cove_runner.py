@@ -1,6 +1,7 @@
 import logging
 from concurrent import futures
 from typing import Any, Callable, List, Tuple, Iterable
+from itertools import tee, filterfalse
 
 from tqdm import tqdm
 
@@ -64,5 +65,13 @@ class CoveRunner(object):
                 colour="#ff69b4",  # hotpink
             )
 
-        for c in completed:
-            yield c
+        successful_results, exceptions = partition(lambda r: r.ExceptionDetails, completed)
+
+        return successful_results, exceptions
+
+
+def partition(pred, iterable):
+    "Use a predicate to partition entries into false entries and true entries."
+    # partition(is_odd, range(10)) --> 0 2 4 6 8   and  1 3 5 7 9
+    t1, t2 = tee(iterable)
+    return filterfalse(pred, t1), filter(pred, t2)
