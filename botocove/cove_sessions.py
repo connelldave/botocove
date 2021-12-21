@@ -150,7 +150,7 @@ class CoveSessions(object):
         client: STSClient = self._get_boto3_client("sts", assuming_session)
         return client
 
-    def _resolve_target_accounts(self, target_ids: Optional[List[str]]) -> Set[str]:
+    def _resolve_target_accounts(self, target_ids: Optional[List[str]]) -> List[str]:
         if self.provided_ignore_ids:
             validated_ignore_ids = self._format_ignore_ids()
         else:
@@ -161,9 +161,9 @@ class CoveSessions(object):
             target_accounts = self._gather_org_assume_targets()
         else:
             # Specific list of IDs passed
-            target_accounts = set(target_ids)
+            target_accounts = target_ids
 
-        return target_accounts - validated_ignore_ids
+        return [ac for ac in target_accounts if ac not in validated_ignore_ids]
 
     def _format_ignore_ids(self) -> Set[str]:
         if not isinstance(self.provided_ignore_ids, list):
