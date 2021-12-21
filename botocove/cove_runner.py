@@ -62,16 +62,11 @@ class CoveRunner(object):
         self,
     ) -> Iterable[CoveSessionInformation]:
         with futures.ThreadPoolExecutor(max_workers=20) as executor:
-            # completed: Iterable[CoveSessionInformation] = tqdm(
-            #     executor.map(self.cove_exception_wrapper_func, self.sessions),
-            #     total=len(self.sessions),
-            #     desc="Executing function",
-            #     colour="#ff69b4",  # hotpink
-            # )
-
-            completed: Iterable[CoveSessionInformation] = executor.map(
-                self.cove_exception_wrapper_func,
-                self.sessions
+            completed: Iterable[CoveSessionInformation] = tqdm(
+                executor.map(self.cove_exception_wrapper_func, self.sessions),
+                total=len(self.sessions),
+                desc="Executing function",
+                colour="#ff69b4",  # hotpink
             )
 
         successful_results, exceptions = partition(lambda r: r.ExceptionDetails, completed)
