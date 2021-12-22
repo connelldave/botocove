@@ -6,7 +6,7 @@ member_account_id="${1}"
 repetitions="${2}"
 filename="${3}"
 
-poetry run python demo.py "${member_account_id}" "${repetitions}" &> /dev/null &
+poetry run python demo.py "${member_account_id}" "${repetitions}" &
 cove_pid=$!
 
 > topdump
