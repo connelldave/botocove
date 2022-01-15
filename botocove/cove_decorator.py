@@ -24,6 +24,8 @@ def cove(
     ignore_ids: Optional[List[str]] = None,
     rolename: Optional[str] = None,
     role_session_name: Optional[str] = None,
+    policy: Optional[str] = None,
+    policy_arns: Optional[List[str]] = None,
     assuming_session: Optional[Session] = None,
     raise_exception: bool = False,
     org_master: bool = True,
@@ -36,6 +38,8 @@ def cove(
                 ignore_ids=ignore_ids,
                 rolename=rolename,
                 role_session_name=role_session_name,
+                policy=policy,
+                policy_arns=policy_arns,
                 org_master=org_master,
                 assuming_session=assuming_session,
             ).get_cove_sessions()
