@@ -7,7 +7,7 @@ from boto3.session import Session
 
 from botocove.cove_runner import CoveRunner
 from botocove.cove_sessions import CoveSessions
-from botocove.cove_types import CoveOutput, CoveSessionInformation, PolicyArn, R
+from botocove.cove_types import CoveOutput, CoveSessionInformation, R
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ def cove(
     rolename: Optional[str] = None,
     role_session_name: Optional[str] = None,
     policy: Optional[str] = None,
-    policy_arns: Optional[List[PolicyArn]] = None,
+    policy_arns: Optional[List[str]] = None,
     assuming_session: Optional[Session] = None,
     raise_exception: bool = False,
     org_master: bool = True,

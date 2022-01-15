@@ -82,7 +82,7 @@ def test_session_result_formatter_with_policy(patch_boto3_client: MagicMock) -> 
 def test_session_result_formatter_with_policy_arn(
     patch_boto3_client: MagicMock,
 ) -> None:
-    session_policy_arns = [{"arn": "arn:aws:iam::aws:policy/IAMReadOnlyAccess"}]
+    session_policy_arns = ["arn:aws:iam::aws:policy/IAMReadOnlyAccess"]
 
     @cove(policy_arns=session_policy_arns)
     def simple_func(session: CoveSession, a_string: str) -> str:
