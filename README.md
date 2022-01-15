@@ -131,7 +131,7 @@ Defaults to the name of the role being used if unset.
 
 A policy document that will be used as a session policy in each Cove session's `sts.assume_role()` call. Unless the value is None, it is passed through via the Policy parameter.
 
-`policy_arns`: Optional[List[PolicyArn]]
+`policy_arns`: Optional[List[str]]
 
 A list of managed policy ARNs that will be used as a session policy in each Cove session's `sts.assume_role()` call. Unless the value is None, it is passed through via the PolicyArns parameter.
 

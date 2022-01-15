@@ -12,7 +12,7 @@ from mypy_boto3_sts.client import STSClient
 from tqdm import tqdm
 
 from botocove.cove_session import CoveSession
-from botocove.cove_types import CoveResults, CoveSessionInformation, PolicyArn
+from botocove.cove_types import CoveResults, CoveSessionInformation
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class CoveSessions(object):
         rolename: Optional[str],
         role_session_name: Optional[str],
         policy: Optional[str],
-        policy_arns: Optional[List[PolicyArn]],
+        policy_arns: Optional[List[str]],
         assuming_session: Optional[Session],
         org_master: bool,
     ) -> None:
@@ -104,6 +104,7 @@ class CoveSessions(object):
             logger.debug(f"Attempting to assume {role_arn}")
             # This calling style avoids a ParamValidationError from botocore.
             # Passing None is not allowed for the optional parameters.
+
             assume_role_args = {
                 k: v
                 for k, v in [
@@ -114,7 +115,7 @@ class CoveSessions(object):
                 ]
                 if v is not None
             }
-            creds = self.sts_client.assume_role(**assume_role_args)["Credentials"]
+            creds = self.sts_client.assume_role(**assume_role_args)["Credentials"]  # type: ignore[arg-type] # noqa E501
             cove_session.initialize_boto_session(
                 aws_access_key_id=creds["AccessKeyId"],
                 aws_secret_access_key=creds["SecretAccessKey"],

@@ -6,10 +6,6 @@ from mypy_boto3_organizations.literals import AccountStatusType
 R = TypeVar("R")
 
 
-class PolicyArn(TypedDict):
-    arn: str
-
-
 @dataclass
 class CoveSessionInformation(Generic[R]):
     Id: str
@@ -20,7 +16,7 @@ class CoveSessionInformation(Generic[R]):
     AssumeRoleSuccess: Optional[bool] = None
     RoleSessionName: Optional[str] = None
     Policy: Optional[str] = None
-    PolicyArns: Optional[List[PolicyArn]] = None
+    PolicyArns: Optional[List[str]] = None
     Result: Optional[R] = None
     ExceptionDetails: Optional[Exception] = None
 

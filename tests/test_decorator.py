@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 from unittest.mock import MagicMock
 
 import pytest
@@ -165,7 +165,7 @@ def test_decorated_simple_func_passed_session_name(
     assert all(x["Result"] == session_name for x in cove_output["Results"])
 
 
-def test_decorated_simple_func_passed_policy(mock_boto3_session) -> None:
+def test_decorated_simple_func_passed_policy(mock_boto3_session: MagicMock) -> None:
     session_policy = '{"Version":"2012-10-17","Statement":[{"Effect":"Deny","Action":"*","Resource":"*"}]}'  # noqa: E501
 
     @cove(
@@ -173,7 +173,7 @@ def test_decorated_simple_func_passed_policy(mock_boto3_session) -> None:
         policy=session_policy,
         org_master=False,
     )
-    def simple_func(session):
+    def simple_func(session: CoveSession) -> Optional[str]:
         return session.session_information.Policy
 
     cove_output = simple_func()
@@ -182,15 +182,15 @@ def test_decorated_simple_func_passed_policy(mock_boto3_session) -> None:
     assert all(x["Result"] == session_policy for x in cove_output["Results"])
 
 
-def test_decorated_simple_func_passed_policy_arn(mock_boto3_session) -> None:
-    session_policy_arns = [{"arn": "arn:aws:iam::aws:policy/IAMReadOnlyAccess"}]
+def test_decorated_simple_func_passed_policy_arn(mock_boto3_session: MagicMock) -> None:
+    session_policy_arns = ["arn:aws:iam::aws:policy/IAMReadOnlyAccess"]
 
     @cove(
         assuming_session=mock_boto3_session,
         policy_arns=session_policy_arns,
         org_master=False,
     )
-    def simple_func(session):
+    def simple_func(session: CoveSession) -> Optional[List[str]]:
         return session.session_information.PolicyArns
 
     cove_output = simple_func()
