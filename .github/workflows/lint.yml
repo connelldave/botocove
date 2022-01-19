@@ -21,8 +21,8 @@ jobs:
       - name: Install dev packages
         run: poetry install -n -v
 
-      - name: Lint with flakehell
-        run: poetry run flakehell lint
+      - name: Lint with flakeheaven
+        run: poetry run flakeheaven lint
 
       - name: Lint with black
         run: poetry run black . --check

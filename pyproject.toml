@@ -13,12 +13,12 @@ python = "^3.8"
 boto3 = "*"
 tqdm = "*"
 boto3-stubs = {extras = ["sts", "organizations"], version = "*"}
+flakeheaven = "^0.11.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
 pytest-mock = "*"
 isort = "*"
-flakehell = "*"
 black = "*"
 flake8-bandit = "*"
 flake8-bugbear = "*"
@@ -45,13 +45,13 @@ force_grid_wrap=0
 use_parentheses=true
 line_length=88
 
-[tool.flakehell]
+[tool.flakeheaven]
 exclude = ["README.rst", "README.md", ".git","__pycache__",".venv"]
 format = "colored"
 max_line_length = 88
 show_source = true
 
-[tool.flakehell.plugins]
+[tool.flakeheaven.plugins]
 flake8-bandit = ["+*", "-S322"]
 flake8-bugbear = ["+*"]
 flake8-builtins = ["+*"]
@@ -66,7 +66,7 @@ pycodestyle = ["+*"]
 pyflakes = ["+*"]
 pylint = ["+*"]
 
-[tool.flakehell.exceptions."tests/"]
+[tool.flakeheaven.exceptions."tests/"]
 flake8-bandit = ["+*", "-S322", "-S101"]
 
 [tool.black]
