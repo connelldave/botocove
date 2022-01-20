@@ -7,7 +7,6 @@ from botocore.config import Config
 from mypy_boto3_organizations.client import OrganizationsClient
 from mypy_boto3_sts.client import STSClient
 
-from botocove.cove_session import CoveSession
 from botocove.cove_types import CoveSessionInformation
 
 logger = logging.getLogger(__name__)
@@ -16,7 +15,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_ROLENAME = "OrganizationAccountAccessRole"
 
 
-class CoveSessions(object):
+class CoveHostAccount(object):
     def __init__(
         self,
         target_ids: Optional[List[str]],
@@ -46,9 +45,9 @@ class CoveSessions(object):
 
         self.org_master = org_master
 
-    def get_cove_sessions(self) -> List[CoveSession]:
+    def get_cove_session_info(self) -> List[CoveSessionInformation]:
         logger.info(
-            f"Getting sessions in accounts: {self.role_to_assume=} "
+            f"Getting session information: {self.role_to_assume=} "
             f"{self.role_session_name=} {self.target_accounts=} "
             f"{self.provided_ignore_ids=}"
         )
@@ -63,14 +62,7 @@ class CoveSessions(object):
                 Policy=self.policy,
                 PolicyArns=self.policy_arns,
             )
-            sessions.append(
-                CoveSession(
-                    account_details,
-                    sts_client=self.sts_client,
-                    org_client=self.org_client,
-                    org_master=self.org_master,
-                )
-            )
+            sessions.append(account_details)
 
         return sessions
 

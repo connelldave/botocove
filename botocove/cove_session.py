@@ -60,9 +60,9 @@ class CoveSession(Session):
 
         try:
             logger.debug(f"Attempting to assume {role_arn}")
+
             # This calling style avoids a ParamValidationError from botocore.
             # Passing None is not allowed for the optional parameters.
-
             assume_role_args = {
                 k: v
                 for k, v in [
@@ -79,26 +79,24 @@ class CoveSession(Session):
                 aws_secret_access_key=creds["SecretAccessKey"],
                 aws_session_token=creds["SessionToken"],
             )
-        except ClientError as e:
-            logger.exception(f"Failed to initalize covesession for account {self.session_information.Id}")
-            self.store_exception(e)
+            self.session_information.AssumeRoleSuccess = True
+        except ClientError:
+            logger.error(
+                f"Failed to initalize cove session for "
+                f"account {self.session_information.Id}"
+            )
+            raise
 
         return self
 
     def initialize_boto_session(self, *args: Any, **kwargs: Any) -> None:
         # Inherit from and initialize standard boto3 Session object
         super().__init__(*args, **kwargs)
-        self.assume_role_success = True
-        self.session_information.AssumeRoleSuccess = self.assume_role_success
-
-    def store_exception(self, err: Exception) -> None:
-        self.stored_exception = err
 
     def format_cove_result(self, result: R) -> CoveSessionInformation:
         self.session_information.Result = result
         return self.session_information
 
-    def format_cove_error(self) -> CoveSessionInformation:
-        self.session_information.ExceptionDetails = self.stored_exception
-        self.session_information.AssumeRoleSuccess = self.assume_role_success
+    def format_cove_error(self, err: Exception) -> CoveSessionInformation:
+        self.session_information.ExceptionDetails = err
         return self.session_information

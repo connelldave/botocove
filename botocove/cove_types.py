@@ -10,11 +10,11 @@ R = TypeVar("R")
 class CoveSessionInformation(Generic[R]):
     Id: str
     RoleName: str
+    AssumeRoleSuccess: bool = False
     Arn: Optional[str] = None
     Email: Optional[str] = None
     Name: Optional[str] = None
     Status: Optional[AccountStatusType] = None
-    AssumeRoleSuccess: Optional[bool] = None
     RoleSessionName: Optional[str] = None
     Policy: Optional[str] = None
     PolicyArns: Optional[List[str]] = None
@@ -33,3 +33,4 @@ class CoveFunctionOutput(TypedDict):
 class CoveOutput(TypedDict):
     Results: List[Dict[str, Any]]
     Exceptions: List[Dict[str, Any]]
+    FailedAssumeRole: List[Dict[str, Any]]

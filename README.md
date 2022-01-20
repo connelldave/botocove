@@ -154,7 +154,8 @@ It is vital to run interruptible, idempotent code with this argument as `True`.
 
 Defaults to True. When True, will leverage the Boto3 Organizations API to list
 all accounts in the organization, and enrich each `CoveSession` with information
-available (`Id`, `Arn`, `Name`). 
+available (`Id`, `Arn`, `Name`, `Status`, `Email`). Disabling this and providing your
+own full list of accounts may be a desirable optimisation if speed is an issue.
 
 `org_master=False` means `target_ids` must be provided (as no list of accounts
 can be created for you), as well as likely `rolename`. Only `Id` will be

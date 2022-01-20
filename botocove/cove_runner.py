@@ -1,9 +1,10 @@
 import logging
 from concurrent import futures
-from typing import Any, Callable, List, Tuple
+from typing import Any, Callable
 
 from tqdm import tqdm
 
+from botocove.cove_host_account import CoveHostAccount
 from botocove.cove_session import CoveSession
 from botocove.cove_types import (
     CoveFunctionOutput,
@@ -18,49 +19,27 @@ logger = logging.getLogger(__name__)
 class CoveRunner(object):
     def __init__(
         self,
-        sessions: List[CoveSession],
+        host_account: CoveHostAccount,
         func: Callable[..., R],
         raise_exception: bool,
         func_args: Any,
         func_kwargs: Any,
+        thread_workers: int,
     ) -> None:
-        self.sessions = sessions
-        self.raise_exception = raise_exception
+
+        self.host_account = host_account
+        self.sessions = host_account.get_cove_session_info()
+
         self.cove_wrapped_func = func
+        self.raise_exception = raise_exception
         self.func_args = func_args
         self.func_kwargs = func_kwargs
 
+        self.thread_workers = thread_workers
+
     def run_cove_function(self) -> CoveFunctionOutput:
         # Run decorated func with all valid sessions
-        results, exceptions = self._run_func_in_threads()
-        return CoveFunctionOutput(
-            Results=results,
-            Exceptions=exceptions,
-        )
-
-    def cove_thread(
-        self,
-        account_session: CoveSession,
-    ) -> CoveSessionInformation:
-        try:
-            cove_session = account_session.activate_cove_session()
-            result = self.cove_wrapped_func(
-                cove_session, *self.func_args, **self.func_kwargs
-            )
-            return cove_session.format_cove_result(result)
-        except Exception as e:
-            if self.raise_exception is True:
-                account_session.store_exception(e)
-                logger.exception(account_session.format_cove_error())
-                raise
-            else:
-                account_session.store_exception(e)
-                return account_session.format_cove_error()
-
-    def _run_func_in_threads(
-        self,
-    ) -> Tuple[CoveResults, CoveResults]:
-        with futures.ThreadPoolExecutor(max_workers=20) as executor:
+        with futures.ThreadPoolExecutor(max_workers=self.thread_workers) as executor:
             completed: CoveResults = list(
                 tqdm(
                     executor.map(self.cove_thread, self.sessions),
@@ -69,9 +48,38 @@ class CoveRunner(object):
                     colour="#ff69b4",  # hotpink
                 )
             )
-
         successful_results = [
             result for result in completed if not result.ExceptionDetails
         ]
         exceptions = [result for result in completed if result.ExceptionDetails]
-        return successful_results, exceptions
+
+        return CoveFunctionOutput(
+            Results=successful_results,
+            Exceptions=exceptions,
+        )
+
+    def cove_thread(
+        self,
+        account_session_info: CoveSessionInformation,
+    ) -> CoveSessionInformation:
+        cove_session = CoveSession(
+            account_session_info,
+            sts_client=self.host_account.sts_client,
+            org_client=self.host_account.org_client,
+            org_master=self.host_account.org_master,
+        )
+        try:
+            cove_session.activate_cove_session()
+
+            result = self.cove_wrapped_func(
+                cove_session, *self.func_args, **self.func_kwargs
+            )
+
+            return cove_session.format_cove_result(result)
+
+        except Exception as e:
+            if self.raise_exception is True:
+                logger.exception(cove_session.format_cove_error(e))
+                raise
+            else:
+                return cove_session.format_cove_error(e)
