@@ -33,7 +33,8 @@ def cove(
     def decorator(func: Callable[..., R]) -> Callable[..., CoveOutput]:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> CoveOutput:
-            valid_sessions, invalid_sessions = CoveSessions(
+
+            sessions = CoveSessions(
                 target_ids=target_ids,
                 ignore_ids=ignore_ids,
                 rolename=rolename,
@@ -45,7 +46,7 @@ def cove(
             ).get_cove_sessions()
 
             runner = CoveRunner(
-                valid_sessions=valid_sessions,
+                sessions=sessions,
                 func=func,
                 raise_exception=raise_exception,
                 func_args=args,
@@ -56,7 +57,6 @@ def cove(
 
             # Rewrite dataclasses into untyped dicts to retain current functionality
             return CoveOutput(
-                FailedAssumeRole=[dataclass_converter(f) for f in invalid_sessions],
                 Results=[dataclass_converter(r) for r in output["Results"]],
                 Exceptions=[dataclass_converter(e) for e in output["Exceptions"]],
             )

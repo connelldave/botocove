@@ -9,6 +9,7 @@ R = TypeVar("R")
 @dataclass
 class CoveSessionInformation(Generic[R]):
     Id: str
+    RoleName: str
     Arn: Optional[str] = None
     Email: Optional[str] = None
     Name: Optional[str] = None
@@ -32,4 +33,3 @@ class CoveFunctionOutput(TypedDict):
 class CoveOutput(TypedDict):
     Results: List[Dict[str, Any]]
     Exceptions: List[Dict[str, Any]]
-    FailedAssumeRole: List[Dict[str, Any]]

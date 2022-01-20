@@ -1,18 +1,14 @@
 import logging
-from concurrent import futures
-from typing import Any, List, Literal, Optional, Set, Tuple, Union
+from typing import Any, List, Literal, Optional, Set, Union
 
 import boto3
 from boto3.session import Session
 from botocore.config import Config
-from botocore.exceptions import ClientError
 from mypy_boto3_organizations.client import OrganizationsClient
-from mypy_boto3_organizations.type_defs import AccountTypeDef
 from mypy_boto3_sts.client import STSClient
-from tqdm import tqdm
 
 from botocove.cove_session import CoveSession
-from botocove.cove_types import CoveResults, CoveSessionInformation
+from botocove.cove_types import CoveSessionInformation
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +46,7 @@ class CoveSessions(object):
 
         self.org_master = org_master
 
-    def get_cove_sessions(self) -> Tuple[List[CoveSession], CoveResults]:
+    def get_cove_sessions(self) -> List[CoveSession]:
         logger.info(
             f"Getting sessions in accounts: {self.role_to_assume=} "
             f"{self.role_session_name=} {self.target_accounts=} "
@@ -58,89 +54,25 @@ class CoveSessions(object):
         )
         logger.info(f"Session policy: {self.policy_arns=} {self.policy=}")
 
-        with futures.ThreadPoolExecutor(max_workers=20) as executor:
-            sessions = list(
-                tqdm(
-                    executor.map(self._cove_session_factory, self.target_accounts),
-                    total=len(self.target_accounts),
-                    desc="Assuming sessions",
-                    colour="#39ff14",  # neon green
+        sessions = []
+        for account_id in self.target_accounts:
+            account_details: CoveSessionInformation = CoveSessionInformation(
+                Id=account_id,
+                RoleName=self.role_to_assume,
+                RoleSessionName=self.role_session_name,
+                Policy=self.policy,
+                PolicyArns=self.policy_arns,
+            )
+            sessions.append(
+                CoveSession(
+                    account_details,
+                    sts_client=self.sts_client,
+                    org_client=self.org_client,
+                    org_master=self.org_master,
                 )
             )
 
-        self.valid_sessions = [
-            session for session in sessions if session.assume_role_success is True
-        ]
-        if not self.valid_sessions:
-            raise ValueError("No accounts are accessible: check logs for detail")
-
-        self.invalid_sessions = self._get_invalid_cove_sessions(sessions)
-        return self.valid_sessions, self.invalid_sessions
-
-    def _cove_session_factory(self, account_id: str) -> CoveSession:
-        role_arn = f"arn:aws:iam::{account_id}:role/{self.role_to_assume}"
-        account_details: CoveSessionInformation = CoveSessionInformation(
-            Id=account_id,
-            RoleSessionName=self.role_session_name,
-            Policy=self.policy,
-            PolicyArns=self.policy_arns,
-        )
-
-        if self.org_master:
-            try:
-                account_description: AccountTypeDef = self.org_client.describe_account(
-                    AccountId=account_id
-                )["Account"]
-                account_details.Arn = account_description["Arn"]
-                account_details.Email = account_description["Email"]
-                account_details.Name = account_description["Name"]
-                account_details.Status = account_description["Status"]
-            except ClientError:
-                logger.exception(f"Failed to call describe_account for {account_id}")
-
-        cove_session = CoveSession(account_details)
-
-        try:
-            logger.debug(f"Attempting to assume {role_arn}")
-            # This calling style avoids a ParamValidationError from botocore.
-            # Passing None is not allowed for the optional parameters.
-
-            assume_role_args = {
-                k: v
-                for k, v in [
-                    ("RoleArn", role_arn),
-                    ("RoleSessionName", self.role_session_name),
-                    ("Policy", self.policy),
-                    ("PolicyArns", self.policy_arns),
-                ]
-                if v is not None
-            }
-            creds = self.sts_client.assume_role(**assume_role_args)["Credentials"]  # type: ignore[arg-type] # noqa E501
-            cove_session.initialize_boto_session(
-                aws_access_key_id=creds["AccessKeyId"],
-                aws_secret_access_key=creds["SecretAccessKey"],
-                aws_session_token=creds["SessionToken"],
-            )
-        except ClientError as e:
-            cove_session.store_exception(e)
-
-        return cove_session
-
-    def _get_invalid_cove_sessions(self, sessions: List[CoveSession]) -> CoveResults:
-        invalid_sessions = [
-            session.format_cove_error()
-            for session in sessions
-            if session.assume_role_success is False
-        ]
-
-        if invalid_sessions:
-            logger.warning("Could not assume role into these accounts:")
-            for invalid_session in invalid_sessions:
-                logger.warning(invalid_session)
-            invalid_ids = [failure.Id for failure in invalid_sessions]
-            logger.warning(f"\n\nInvalid session Account IDs as list: {invalid_ids}")
-
-        return invalid_sessions
+        return sessions
 
     def _get_boto3_client(
         self,
