@@ -9,7 +9,7 @@ account.
 - Easy
 - Dolphin Themed 🐬
 
-A simple decorator for functions to remove time and complexity burden. Uses 
+A simple decorator for functions to remove time and complexity burden. Uses
 `ThreadPoolExecutor` to run boto3 sessions against one to all
 of your AWS accounts at (nearly!) the same speed as running against one.
 
@@ -79,13 +79,13 @@ def get_iam_users(session):
 
 def main():
     # No session passed as the decorator injects it
-    all_results = get_iam_users() 
+    all_results = get_iam_users()
     # Now returns a Dict with keys Results, Exceptions and FailedAssumeRole
-    
+
     # A list of dictionaries for each account, with account details included.
     # Each account's get_iam_users return is in a "Result" key.
-    print(all_results["Results"]) 
-    
+    print(all_results["Results"])
+
     # A list of dictionaries for each account that raised an exception
     print(all_results["Exceptions"])
 
@@ -96,7 +96,7 @@ def main():
 ## Arguments
 
 ### Cove
-`@cove()`: 
+`@cove()`:
 
 Uses boto3 credential chain to get every AWS account within the
 organization, assume the `OrganizationAccountAccessRole` in it and run the
@@ -119,12 +119,12 @@ be ignored.
 
 `rolename`: Optional[str]
 
-An IAM role name that will be attempted to assume in all target accounts. 
+An IAM role name that will be attempted to assume in all target accounts.
 Defaults to the AWS Organization default, `OrganizationAccountAccessRole`.
 
 `role_session_name`: Optional[str]
 
-An IAM role session name that will be passed to each Cove session's `sts.assume_role()` call. 
+An IAM role session name that will be passed to each Cove session's `sts.assume_role()` call.
 Defaults to the name of the role being used if unset.
 
 `policy`: Optional[str]
@@ -181,7 +181,7 @@ def do_nothing(session: CoveSession):
 Wrapped functions return a dictionary. Each value contains List[Dict[str, Any]]:
 ```
 {
-    "Results": results: 
+    "Results": results:
     "Exceptions": exceptions,
     "FailedAssumeRole": invalid_sessions,
 }
@@ -196,13 +196,13 @@ An example of cove_output["Results"]:
     'Status': 'ACTIVE',
     'AssumeRoleSuccess': True,
     'Result': wrapped_function_return_value # Result of wrapped func
-    } 
-] 
+    }
+]
 ```
 
 ### botocove?
 
 It turns out that the Amazon's Boto dolphins are solitary or small-group animals,
-unlike the large pods of dolphins in the oceans. This killed my "large group of 
+unlike the large pods of dolphins in the oceans. This killed my "large group of
 boto" idea, so the next best idea was where might they all shelter together... a
 cove!

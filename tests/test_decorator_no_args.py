@@ -10,7 +10,7 @@ from botocove import CoveSession, cove
 
 @pytest.fixture()
 def patch_boto3_client(mocker: MockerFixture) -> MagicMock:
-    mock_boto3 = mocker.patch("botocove.cove_sessions.boto3")
+    mock_boto3 = mocker.patch("botocove.cove_host_account.boto3")
     list_accounts_result = {"Accounts": [{"Id": "12345689012", "Status": "ACTIVE"}]}
     mock_boto3.client.return_value.get_paginator.return_value.paginate.return_value.build_full_result.return_value = (  # noqa E501
         list_accounts_result
@@ -48,6 +48,7 @@ def test_decorated_simple_func(patch_boto3_client: MagicMock) -> None:
             "Name": "an-account-name",
             "Status": "ACTIVE",
             "AssumeRoleSuccess": True,
+            "RoleName": "OrganizationAccountAccessRole",
             "RoleSessionName": "OrganizationAccountAccessRole",
             "Result": "hello",
         }
@@ -69,6 +70,7 @@ def test_decorated_func_passed_arg(patch_boto3_client: MagicMock) -> None:
             "Name": "an-account-name",
             "Status": "ACTIVE",
             "AssumeRoleSuccess": True,
+            "RoleName": "OrganizationAccountAccessRole",
             "RoleSessionName": "OrganizationAccountAccessRole",
             "Result": "blue",
         }
@@ -93,6 +95,7 @@ def test_decorated_func_passed_arg_and_kwarg(patch_boto3_client: MagicMock) -> N
             "Name": "an-account-name",
             "Status": "ACTIVE",
             "AssumeRoleSuccess": True,
+            "RoleName": "OrganizationAccountAccessRole",
             "RoleSessionName": "OrganizationAccountAccessRole",
             "Result": ("blue", "circle", "11:11"),
         }

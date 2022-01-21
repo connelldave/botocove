@@ -10,7 +10,7 @@ from botocove import CoveSession, cove
 
 @pytest.fixture()
 def patch_boto3_client(mocker: MockerFixture) -> MagicMock:
-    mock_boto3 = mocker.patch("botocove.cove_sessions.boto3")
+    mock_boto3 = mocker.patch("botocove.cove_host_account.boto3")
     list_accounts_result = {"Accounts": [{"Id": "12345689012", "Status": "ACTIVE"}]}
     mock_boto3.client.return_value.get_paginator.return_value.paginate.return_value.build_full_result.return_value = (  # noqa E501
         list_accounts_result
@@ -48,6 +48,7 @@ def test_session_result_formatter(patch_boto3_client: MagicMock) -> None:
             "Status": "ACTIVE",
             "AssumeRoleSuccess": True,
             "Result": "test-string",
+            "RoleName": "OrganizationAccountAccessRole",
             "RoleSessionName": "OrganizationAccountAccessRole",
         }
     ]
@@ -72,6 +73,7 @@ def test_session_result_formatter_with_policy(patch_boto3_client: MagicMock) -> 
             "Status": "ACTIVE",
             "AssumeRoleSuccess": True,
             "Result": "test-string",
+            "RoleName": "OrganizationAccountAccessRole",
             "RoleSessionName": "OrganizationAccountAccessRole",
             "Policy": session_policy,
         }
@@ -99,6 +101,7 @@ def test_session_result_formatter_with_policy_arn(
             "Status": "ACTIVE",
             "AssumeRoleSuccess": True,
             "Result": "test-string",
+            "RoleName": "OrganizationAccountAccessRole",
             "RoleSessionName": "OrganizationAccountAccessRole",
             "PolicyArns": session_policy_arns,
         }
@@ -125,6 +128,7 @@ def test_session_result_error_handler(patch_boto3_client: MagicMock) -> None:
             "Id": "12345689012",
             "AssumeRoleSuccess": True,
             "Result": "test-string",
+            "RoleName": "OrganizationAccountAccessRole",
             "RoleSessionName": "OrganizationAccountAccessRole",
         }
     ]

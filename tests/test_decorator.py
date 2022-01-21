@@ -139,6 +139,7 @@ def test_decorated_simple_func_passed_args(mock_boto3_session: MagicMock) -> Non
             "Status": "ACTIVE",
             "AssumeRoleSuccess": True,
             "Result": 6,
+            "RoleName": "OrganizationAccountAccessRole",
             "RoleSessionName": "OrganizationAccountAccessRole",
         }
     ]

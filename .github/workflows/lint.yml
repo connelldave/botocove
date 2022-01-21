@@ -22,13 +22,4 @@ jobs:
         run: poetry install -n -v
 
       - name: Lint with flakeheaven
-        run: poetry run flakeheaven lint
-
-      - name: Lint with black
-        run: poetry run black . --check
-
-      - name: Lint with isort
-        run: poetry run isort . --check
-
-      - name: Lint with mypy
-        run: poetry run mypy .
+        run: poetry run pre-commit run --all-files
