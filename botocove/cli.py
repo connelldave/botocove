@@ -7,6 +7,9 @@ import click
 
 from botocove import cove
 
+from collections import defaultdict
+import json
+
 
 @click.group()
 @click.option(
@@ -61,21 +64,36 @@ def run(files):
     decorated, undecorated = get_all_cove_funcs(files)
 
     if not auto_approve:
-        confirm = input("Confirm running these functions with Botocove by typing 'yes'")
-        if confirm.lower() != "yes":
+        confirm = input(
+            "\nConfirm running these functions with Botocove by typing 'yes'\n--> "
+        )
+        if confirm.lower() not in ["yes", "y"]:
             print("Run cancelled")
             exit(0)
+    print("running")
 
-    all_outputs = []
+    # TODO idk if I like this
+    INCLUDE_META = False
+
+    all_outputs = defaultdict(dict)
     for f in undecorated:
-        output = cove(f)
-        all_outputs.append(output)
+        print(f"Running {f.__name__}")
+        output = cove(f, rolename="AWSControlTowerExecution")()
+        for acc_output in output["Results"]:
+            all_outputs[acc_output["Id"]][f.__name__] = acc_output.pop("Result", {})
+            if INCLUDE_META:
+                all_outputs[acc_output["Id"]][f"{f.__name__}-meta"] = acc_output
 
+    print("done with undecorated..")
     for f in decorated:
         output = f()
-        all_outputs.append(output)
+        for acc_output in output["Results"]:
+            all_outputs[acc_output["Id"]][f.__name__] = acc_output.pop("Result")
+            if INCLUDE_META:
+                all_outputs[acc_output["Id"]][f"{f.__name__}-meta"] = acc_output
 
-    print(all_outputs)
+    with open("out.json", "w") as f:
+        json.dump(all_outputs, f, indent=4, default=str)
 
 
 def get_all_cove_funcs(files) -> Tuple[List[Callable], List[Callable]]:
