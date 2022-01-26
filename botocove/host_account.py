@@ -7,7 +7,7 @@ from botocore.config import Config
 from mypy_boto3_organizations.client import OrganizationsClient
 from mypy_boto3_sts.client import STSClient
 
-from botocove.cove_types import CoveSessionInformation
+from botocove.types import CoveSessionInformation
 
 logger = logging.getLogger(__name__)
 

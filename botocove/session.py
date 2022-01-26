@@ -7,7 +7,7 @@ from mypy_boto3_organizations.client import OrganizationsClient
 from mypy_boto3_organizations.type_defs import AccountTypeDef
 from mypy_boto3_sts.client import STSClient
 
-from botocove.cove_types import CoveSessionInformation, R
+from botocove.types import CoveSessionInformation, R
 
 logger = logging.getLogger(__name__)
 

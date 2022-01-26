@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from botocove import cove
-from botocove.cove_session import CoveSession
+from botocove.session import CoveSession
 
 
 @pytest.fixture()

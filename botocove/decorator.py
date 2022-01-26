@@ -5,9 +5,9 @@ from typing import Any, Callable, Dict, List, Optional
 
 from boto3.session import Session
 
-from botocove.cove_host_account import CoveHostAccount
-from botocove.cove_runner import CoveRunner
-from botocove.cove_types import CoveOutput, CoveSessionInformation, R
+from botocove.host_account import CoveHostAccount
+from botocove.runner import CoveRunner
+from botocove.types import CoveOutput, CoveSessionInformation, R
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ def cove(
 ) -> Callable:
     def decorator(func: Callable[..., R]) -> Callable[..., CoveOutput]:
         @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> CoveOutput:
+        def cove_wrapper(*args: Any, **kwargs: Any) -> CoveOutput:
 
             host_account = CoveHostAccount(
                 target_ids=target_ids,
@@ -72,7 +72,7 @@ def cove(
                 ],
             )
 
-        return wrapper
+        return cove_wrapper
 
     # Handle both bare decorator and with argument
     if _func is None:

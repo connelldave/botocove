@@ -4,14 +4,9 @@ from typing import Any, Callable
 
 from tqdm import tqdm
 
-from botocove.cove_host_account import CoveHostAccount
-from botocove.cove_session import CoveSession
-from botocove.cove_types import (
-    CoveFunctionOutput,
-    CoveResults,
-    CoveSessionInformation,
-    R,
-)
+from botocove.host_account import CoveHostAccount
+from botocove.session import CoveSession
+from botocove.types import CoveFunctionOutput, CoveResults, CoveSessionInformation, R
 
 logger = logging.getLogger(__name__)
 

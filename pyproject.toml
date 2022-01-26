@@ -13,6 +13,7 @@ python = "^3.8"
 boto3 = "*"
 tqdm = "*"
 boto3-stubs = {extras = ["sts", "organizations"], version = "*"}
+click = "^8.0.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
