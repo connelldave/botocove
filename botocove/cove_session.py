@@ -1,8 +1,15 @@
+import logging
 from typing import Any
 
 from boto3.session import Session
+from botocore.exceptions import ClientError
+from mypy_boto3_organizations.client import OrganizationsClient
+from mypy_boto3_organizations.type_defs import AccountTypeDef
+from mypy_boto3_sts.client import STSClient
 
 from botocove.cove_types import CoveSessionInformation, R
+
+logger = logging.getLogger(__name__)
 
 
 class CoveSession(Session):
@@ -15,27 +22,81 @@ class CoveSession(Session):
     session_information: CoveSessionInformation
     stored_exception: Exception
 
-    def __init__(self, session_info: CoveSessionInformation) -> None:
+    def __init__(
+        self,
+        session_info: CoveSessionInformation,
+        org_client: OrganizationsClient,
+        sts_client: STSClient,
+        org_master: bool,
+    ) -> None:
         self.session_information = session_info
+        self.org_master = org_master
+        self.org_client = org_client
+        self.sts_client = sts_client
 
     def __repr__(self) -> str:
         # Overwrite boto3's repr to avoid AttributeErrors
         return f"{self.__class__.__name__}(account_id={self.session_information.Id})"
 
+    def activate_cove_session(self) -> "CoveSession":
+        role_arn = (
+            f"arn:aws:iam::{self.session_information.Id}:role/"
+            f"{self.session_information.RoleName}"
+        )
+
+        if self.org_master:
+            try:
+                account_description: AccountTypeDef = self.org_client.describe_account(
+                    AccountId=self.session_information.Id
+                )["Account"]
+                self.session_information.Arn = account_description["Arn"]
+                self.session_information.Email = account_description["Email"]
+                self.session_information.Name = account_description["Name"]
+                self.session_information.Status = account_description["Status"]
+            except ClientError:
+                logger.exception(
+                    f"Failed to call describe_account for {self.session_information.Id}"
+                )
+
+        try:
+            logger.debug(f"Attempting to assume {role_arn}")
+
+            # This calling style avoids a ParamValidationError from botocore.
+            # Passing None is not allowed for the optional parameters.
+            assume_role_args = {
+                k: v
+                for k, v in [
+                    ("RoleArn", role_arn),
+                    ("RoleSessionName", self.session_information.RoleSessionName),
+                    ("Policy", self.session_information.Policy),
+                    ("PolicyArns", self.session_information.PolicyArns),
+                ]
+                if v is not None
+            }
+            creds = self.sts_client.assume_role(**assume_role_args)["Credentials"]  # type: ignore[arg-type] # noqa E501
+            self.initialize_boto_session(
+                aws_access_key_id=creds["AccessKeyId"],
+                aws_secret_access_key=creds["SecretAccessKey"],
+                aws_session_token=creds["SessionToken"],
+            )
+            self.session_information.AssumeRoleSuccess = True
+        except ClientError:
+            logger.error(
+                f"Failed to initalize cove session for "
+                f"account {self.session_information.Id}"
+            )
+            raise
+
+        return self
+
     def initialize_boto_session(self, *args: Any, **kwargs: Any) -> None:
         # Inherit from and initialize standard boto3 Session object
         super().__init__(*args, **kwargs)
-        self.assume_role_success = True
-        self.session_information.AssumeRoleSuccess = self.assume_role_success
-
-    def store_exception(self, err: Exception) -> None:
-        self.stored_exception = err
 
     def format_cove_result(self, result: R) -> CoveSessionInformation:
         self.session_information.Result = result
         return self.session_information
 
-    def format_cove_error(self) -> CoveSessionInformation:
-        self.session_information.ExceptionDetails = self.stored_exception
-        self.session_information.AssumeRoleSuccess = self.assume_role_success
+    def format_cove_error(self, err: Exception) -> CoveSessionInformation:
+        self.session_information.ExceptionDetails = err
         return self.session_information

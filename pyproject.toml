@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "botocove"
-version = "1.4.1"
+version = "1.5.0"
 description = "A decorator to allow running a function against all AWS accounts in an organization"
 authors = ["Dave Connell <daveconn41@gmail.com>"]
 license = "LGPL-3.0-or-later"
@@ -13,14 +13,12 @@ python = "^3.8"
 boto3 = "*"
 tqdm = "*"
 boto3-stubs = {extras = ["sts", "organizations"], version = "*"}
-flakeheaven = "^0.11.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
 pytest-mock = "*"
 isort = "*"
 black = "*"
-flake8-bandit = "*"
 flake8-bugbear = "*"
 flake8-builtins = "*"
 flake8-comprehensions = "*"
@@ -31,6 +29,8 @@ flake8-pytest-style = "*"
 pep8-naming = "*"
 flake8-print = "*"
 mypy = "*"
+pre-commit = "*"
+flakeheaven = "*"
 
 
 [build-system]
@@ -57,7 +57,6 @@ flake8-bugbear = ["+*"]
 flake8-builtins = ["+*"]
 flake8-comprehensions = ["+*"]
 flake8-eradicate = ["+*"]
-flake8-isort = ["+*"]
 flake8-mutable = ["+*"]
 flake8-pytest-style = ["+*"]
 mccabe = ["+*"]

@@ -9,7 +9,7 @@ account.
 - Easy
 - Dolphin Themed 🐬
 
-A simple decorator for functions to remove time and complexity burden. Uses 
+A simple decorator for functions to remove time and complexity burden. Uses
 `ThreadPoolExecutor` to run boto3 sessions against one to all
 of your AWS accounts at (nearly!) the same speed as running against one.
 
@@ -79,13 +79,13 @@ def get_iam_users(session):
 
 def main():
     # No session passed as the decorator injects it
-    all_results = get_iam_users() 
+    all_results = get_iam_users()
     # Now returns a Dict with keys Results, Exceptions and FailedAssumeRole
-    
+
     # A list of dictionaries for each account, with account details included.
     # Each account's get_iam_users return is in a "Result" key.
-    print(all_results["Results"]) 
-    
+    print(all_results["Results"])
+
     # A list of dictionaries for each account that raised an exception
     print(all_results["Exceptions"])
 
@@ -96,7 +96,7 @@ def main():
 ## Arguments
 
 ### Cove
-`@cove()`: 
+`@cove()`:
 
 Uses boto3 credential chain to get every AWS account within the
 organization, assume the `OrganizationAccountAccessRole` in it and run the
@@ -119,12 +119,12 @@ be ignored.
 
 `rolename`: Optional[str]
 
-An IAM role name that will be attempted to assume in all target accounts. 
+An IAM role name that will be attempted to assume in all target accounts.
 Defaults to the AWS Organization default, `OrganizationAccountAccessRole`.
 
 `role_session_name`: Optional[str]
 
-An IAM role session name that will be passed to each Cove session's `sts.assume_role()` call. 
+An IAM role session name that will be passed to each Cove session's `sts.assume_role()` call.
 Defaults to the name of the role being used if unset.
 
 `policy`: Optional[str]
@@ -154,11 +154,19 @@ It is vital to run interruptible, idempotent code with this argument as `True`.
 
 Defaults to True. When True, will leverage the Boto3 Organizations API to list
 all accounts in the organization, and enrich each `CoveSession` with information
-available (`Id`, `Arn`, `Name`). 
+available (`Id`, `Arn`, `Name`, `Status`, `Email`). Disabling this and providing your
+own full list of accounts may be a desirable optimisation if speed is an issue.
 
 `org_master=False` means `target_ids` must be provided (as no list of accounts
 can be created for you), as well as likely `rolename`. Only `Id` will be
 available to `CoveSession`.
+
+`thread_workers`: int
+
+Defaults to 20. Cove utilises a ThreadPoolWorker under the hood, which can be tuned
+with this argument. Number of thread workers directly corrolates to memory usage: see
+[here](#is-botocove-thread-safe)
+
 
 ### CoveSession
 
@@ -180,7 +188,7 @@ def do_nothing(session: CoveSession):
 Wrapped functions return a dictionary. Each value contains List[Dict[str, Any]]:
 ```
 {
-    "Results": results: 
+    "Results": results:
     "Exceptions": exceptions,
     "FailedAssumeRole": invalid_sessions,
 }
@@ -195,13 +203,35 @@ An example of cove_output["Results"]:
     'Status': 'ACTIVE',
     'AssumeRoleSuccess': True,
     'Result': wrapped_function_return_value # Result of wrapped func
-    } 
-] 
+    }
+]
 ```
+
+### Is botocove thread safe?
+
+botocove is thread safe, but number of threaded executions will be bound by memory,
+network IO and AWS api rate limiting. Defaulting to 20 thread workers is a reasonable
+starting point, but can be further optimised for runtime with experimentation.
+
+botocove has no constraint or understanding of the function it's wrapping: it is
+recommended to avoid shared state for botocove wrapped functions, and to write simple
+functions that are written to be idempotent and independent.
+
+[Boto3 Session objects are not natively thread safe and should not be shared across threads](https://boto3.amazonaws.com/v1/documentation/api/1.14.31/guide/session.html#multithreading-or-multiprocessing-with-sessions).
+However, botocove is instantiating a new Session object per thread/account and running
+decorated functions inside their own closure. A shared client is used from the host account
+that botocove is run from (eg, an organization master account) -
+[clients are threadsafe](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/clients.html#multithreading-or-multiprocessing-with-clients) and allow this.
+
+boto3 sessions have a significant memory footprint:
+Version 1.5.0 of botocove was re-written to ensure that boto3 sessions are released
+after completion which resolved memory starvation issues. This was discussed here:
+https://github.com/connelldave/botocove/issues/20 and a relevant boto3 issue is here:
+https://github.com/boto/boto3/issues/1670
 
 ### botocove?
 
 It turns out that the Amazon's Boto dolphins are solitary or small-group animals,
-unlike the large pods of dolphins in the oceans. This killed my "large group of 
+unlike the large pods of dolphins in the oceans. This killed my "large group of
 boto" idea, so the next best idea was where might they all shelter together... a
 cove!

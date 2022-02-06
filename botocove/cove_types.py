@@ -9,11 +9,12 @@ R = TypeVar("R")
 @dataclass
 class CoveSessionInformation(Generic[R]):
     Id: str
+    RoleName: str
+    AssumeRoleSuccess: bool = False
     Arn: Optional[str] = None
     Email: Optional[str] = None
     Name: Optional[str] = None
     Status: Optional[AccountStatusType] = None
-    AssumeRoleSuccess: Optional[bool] = None
     RoleSessionName: Optional[str] = None
     Policy: Optional[str] = None
     PolicyArns: Optional[List[str]] = None

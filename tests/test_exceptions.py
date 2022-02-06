@@ -2,7 +2,6 @@ from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
-from botocore.exceptions import ClientError
 
 from botocove import cove
 from botocove.cove_session import CoveSession
@@ -67,23 +66,6 @@ def test_no_account_id_exception(mock_boto3_session: MagicMock) -> None:
         simple_func()
 
 
-def test_no_valid_sessions_exception(mock_boto3_session: MagicMock) -> None:
-    mock_boto3_session.client.return_value.assume_role.side_effect = [
-        ClientError({"Error": {}}, "error1"),
-        ClientError({"Error": {}}, "error2"),
-    ]
-
-    @cove(assuming_session=mock_boto3_session, target_ids=["123", "456"])
-    def simple_func(session: CoveSession) -> str:
-        return "hello"
-
-    with pytest.raises(
-        ValueError,
-        match=("No accounts are accessible: check logs for detail"),
-    ):
-        simple_func()
-
-
 def test_handled_exception_in_wrapped_func(mock_boto3_session: MagicMock) -> None:
     @cove(assuming_session=mock_boto3_session, target_ids=["123"])
     def simple_func(session: CoveSession) -> None:
@@ -93,16 +75,18 @@ def test_handled_exception_in_wrapped_func(mock_boto3_session: MagicMock) -> Non
     expected = [
         {
             "Id": "123",
+            "RoleName": "OrganizationAccountAccessRole",
+            "AssumeRoleSuccess": True,
             "Arn": "hello-arn",
             "Email": "email@address.com",
             "Name": "an-account-name",
             "Status": "ACTIVE",
-            "AssumeRoleSuccess": True,
             "RoleSessionName": "OrganizationAccountAccessRole",
             "ExceptionDetails": Exception("oh no"),
         }
     ]
     # Compare repr of exceptions
+    print(results["Exceptions"])
     assert repr(results["Exceptions"]) == repr(expected)
 
 
