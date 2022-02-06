@@ -161,6 +161,13 @@ own full list of accounts may be a desirable optimisation if speed is an issue.
 can be created for you), as well as likely `rolename`. Only `Id` will be
 available to `CoveSession`.
 
+`thread_workers`: int
+
+Defaults to 20. Cove utilises a ThreadPoolWorker under the hood, which can be tuned
+with this argument. Number of thread workers directly corrolates to memory usage: see
+[here](#is-botocove-thread-safe)
+
+
 ### CoveSession
 
 Cove supplies an enriched Boto3 session to each function called. Account details
@@ -199,6 +206,28 @@ An example of cove_output["Results"]:
     }
 ]
 ```
+
+### Is botocove thread safe?
+
+botocove is thread safe, but number of threaded executions will be bound by memory,
+network IO and AWS api rate limiting. Defaulting to 20 thread workers is a reasonable
+starting point, but can be further optimised for runtime with experimentation.
+
+botocove has no constraint or understanding of the function it's wrapping: it is
+recommended to avoid shared state for botocove wrapped functions, and to write simple
+functions that are written to be idempotent and independent.
+
+[Boto3 Session objects are not natively thread safe and should not be shared across threads](https://boto3.amazonaws.com/v1/documentation/api/1.14.31/guide/session.html#multithreading-or-multiprocessing-with-sessions).
+However, botocove is instantiating a new Session object per thread/account and running
+decorated functions inside their own closure. A shared client is used from the host account
+that botocove is run from (eg, an organization master account) -
+[clients are threadsafe](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/clients.html#multithreading-or-multiprocessing-with-clients) and allow this.
+
+boto3 sessions have a significant memory footprint:
+Version 1.5.0 of botocove was re-written to ensure that boto3 sessions are released
+after completion which resolved memory starvation issues. This was discussed here:
+https://github.com/connelldave/botocove/issues/20 and a relevant boto3 issue is here:
+https://github.com/boto/boto3/issues/1670
 
 ### botocove?
 
