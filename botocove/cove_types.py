@@ -1,25 +1,21 @@
-from dataclasses import dataclass
-from typing import Any, Dict, Generic, List, Optional, TypedDict, TypeVar
+from typing import Any, Dict, List, Optional, TypedDict
 
 from mypy_boto3_organizations.literals import AccountStatusType
 
-R = TypeVar("R")
 
-
-@dataclass
-class CoveSessionInformation(Generic[R]):
+class CoveSessionInformation(TypedDict):
     Id: str
     RoleName: str
-    AssumeRoleSuccess: bool = False
-    Arn: Optional[str] = None
-    Email: Optional[str] = None
-    Name: Optional[str] = None
-    Status: Optional[AccountStatusType] = None
-    RoleSessionName: Optional[str] = None
-    Policy: Optional[str] = None
-    PolicyArns: Optional[List[str]] = None
-    Result: Optional[R] = None
-    ExceptionDetails: Optional[Exception] = None
+    AssumeRoleSuccess: bool
+    Arn: Optional[str]
+    Email: Optional[str]
+    Name: Optional[str]
+    Status: Optional[AccountStatusType]
+    RoleSessionName: Optional[str]
+    Policy: Optional[str]
+    PolicyArns: Optional[List[str]]
+    Result: Any
+    ExceptionDetails: Optional[Exception]
 
 
 CoveResults = List[CoveSessionInformation]

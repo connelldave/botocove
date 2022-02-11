@@ -61,6 +61,13 @@ class CoveHostAccount(object):
                 RoleSessionName=self.role_session_name,
                 Policy=self.policy,
                 PolicyArns=self.policy_arns,
+                AssumeRoleSuccess=False,
+                ExceptionDetails=None,
+                Name=None,
+                Arn=None,
+                Email=None,
+                Status=None,
+                Result=None,
             )
             sessions.append(account_details)
 
