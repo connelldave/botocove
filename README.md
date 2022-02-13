@@ -10,11 +10,10 @@ account.
 - Dolphin Themed 🐬
 
 A simple decorator for functions to remove time and complexity burden. Uses
-`ThreadPoolExecutor` to run boto3 sessions against one to all
-of your AWS accounts at (nearly!) the same speed as running against one.
+`ThreadPoolExecutor` to run boto3 sessions against AWS accounts concurrently.
 
-Wrap a function in `@cove` and inject an assumed role session into every account
-required, gathering all results into a dictionary.
+Decorating a function in `@cove` provides a boto3 session to the function and runs it
+in every account required, gathering all results into a dictionary.
 
 **Warning**: this tool gives you the potential to make dangerous changes
 at scale. **Test carefully and make idempotent changes**! Please read available

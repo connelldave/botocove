@@ -158,7 +158,7 @@ def test_decorated_simple_func_passed_session_name(
         org_master=False,
     )
     def simple_func(session: CoveSession) -> Optional[str]:
-        return session.session_information.RoleSessionName
+        return session.session_information["RoleSessionName"]
 
     cove_output = simple_func()
 
@@ -175,7 +175,7 @@ def test_decorated_simple_func_passed_policy(mock_boto3_session: MagicMock) -> N
         org_master=False,
     )
     def simple_func(session: CoveSession) -> Optional[str]:
-        return session.session_information.Policy
+        return session.session_information["Policy"]
 
     cove_output = simple_func()
 
@@ -192,7 +192,7 @@ def test_decorated_simple_func_passed_policy_arn(mock_boto3_session: MagicMock) 
         org_master=False,
     )
     def simple_func(session: CoveSession) -> Optional[List[str]]:
-        return session.session_information.PolicyArns
+        return session.session_information["PolicyArns"]
 
     cove_output = simple_func()
 

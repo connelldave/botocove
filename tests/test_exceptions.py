@@ -72,22 +72,24 @@ def test_handled_exception_in_wrapped_func(mock_boto3_session: MagicMock) -> Non
         raise Exception("oh no")
 
     results = simple_func()
-    expected = [
-        {
-            "Id": "123",
-            "RoleName": "OrganizationAccountAccessRole",
-            "AssumeRoleSuccess": True,
-            "Arn": "hello-arn",
-            "Email": "email@address.com",
-            "Name": "an-account-name",
-            "Status": "ACTIVE",
-            "RoleSessionName": "OrganizationAccountAccessRole",
-            "ExceptionDetails": Exception("oh no"),
-        }
-    ]
+    expected = {
+        "Id": "123",
+        "RoleName": "OrganizationAccountAccessRole",
+        "AssumeRoleSuccess": True,
+        "Arn": "hello-arn",
+        "Email": "email@address.com",
+        "Name": "an-account-name",
+        "Status": "ACTIVE",
+        "RoleSessionName": "OrganizationAccountAccessRole",
+        "ExceptionDetails": repr(Exception("oh no")),
+    }
+
     # Compare repr of exceptions
-    print(results["Exceptions"])
-    assert repr(results["Exceptions"]) == repr(expected)
+    results["Exceptions"][0]["ExceptionDetails"] = repr(
+        results["Exceptions"][0]["ExceptionDetails"]
+    )
+
+    assert results["Exceptions"][0] == expected
 
 
 def test_raised_exception_in_wrapped_func(mock_boto3_session: MagicMock) -> None:

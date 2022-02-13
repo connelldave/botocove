@@ -6,12 +6,7 @@ from tqdm import tqdm
 
 from botocove.cove_host_account import CoveHostAccount
 from botocove.cove_session import CoveSession
-from botocove.cove_types import (
-    CoveFunctionOutput,
-    CoveResults,
-    CoveSessionInformation,
-    R,
-)
+from botocove.cove_types import CoveFunctionOutput, CoveResults, CoveSessionInformation
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +15,7 @@ class CoveRunner(object):
     def __init__(
         self,
         host_account: CoveHostAccount,
-        func: Callable[..., R],
+        func: Callable[..., Any],
         raise_exception: bool,
         func_args: Any,
         func_kwargs: Any,
@@ -49,9 +44,9 @@ class CoveRunner(object):
                 )
             )
         successful_results = [
-            result for result in completed if not result.ExceptionDetails
+            result for result in completed if not result["ExceptionDetails"]
         ]
-        exceptions = [result for result in completed if result.ExceptionDetails]
+        exceptions = [result for result in completed if result["ExceptionDetails"]]
 
         return CoveFunctionOutput(
             Results=successful_results,
