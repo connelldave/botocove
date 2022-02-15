@@ -1,9 +1,10 @@
 import logging
-from typing import Any, List, Literal, Optional, Set, Union
+from typing import Any, List, Literal, Optional, Sequence, Set, Union
 
 import boto3
 from boto3.session import Session
 from botocore.config import Config
+from mypy_boto3_ec2.client import EC2Client
 from mypy_boto3_organizations.client import OrganizationsClient
 from mypy_boto3_sts.client import STSClient
 
@@ -16,6 +17,8 @@ DEFAULT_ROLENAME = "OrganizationAccountAccessRole"
 
 
 class CoveHostAccount(object):
+    regions: List[Optional[str]]
+
     def __init__(
         self,
         target_ids: Optional[List[str]],
@@ -26,10 +29,26 @@ class CoveHostAccount(object):
         policy_arns: Optional[List[str]],
         assuming_session: Optional[Session],
         org_master: bool,
+        thread_workers: int,
+        regions: Optional[List[str]],
     ) -> None:
+
+        self.thread_workers = thread_workers
 
         self.sts_client = self._get_boto3_sts_client(assuming_session)
         self.org_client = self._get_boto3_org_client(assuming_session)
+        self.target_regions: Sequence[Optional[str]] = [None]
+
+        if regions is not None:
+            if (
+                "ALL" in regions
+            ):  # TODO probably a better way to do this than passing ["ALL"]
+                ec2_client = self._get_boto3_ec2_client(assuming_session)
+                self.target_regions = [
+                    r["RegionName"] for r in ec2_client.describe_regions()["Regions"]
+                ]
+            else:
+                self.target_regions = regions
 
         self.provided_ignore_ids = ignore_ids
         self.target_accounts = self._resolve_target_accounts(target_ids)
@@ -54,38 +73,43 @@ class CoveHostAccount(object):
         logger.info(f"Session policy: {self.policy_arns=} {self.policy=}")
 
         sessions = []
-        for account_id in self.target_accounts:
-            account_details: CoveSessionInformation = CoveSessionInformation(
-                Id=account_id,
-                RoleName=self.role_to_assume,
-                RoleSessionName=self.role_session_name,
-                Policy=self.policy,
-                PolicyArns=self.policy_arns,
-                AssumeRoleSuccess=False,
-                ExceptionDetails=None,
-                Name=None,
-                Arn=None,
-                Email=None,
-                Status=None,
-                Result=None,
-            )
-            sessions.append(account_details)
+
+        for region in self.target_regions:
+            for account_id in self.target_accounts:
+                account_details: CoveSessionInformation = CoveSessionInformation(
+                    Id=account_id,
+                    RoleName=self.role_to_assume,
+                    RoleSessionName=self.role_session_name,
+                    Policy=self.policy,
+                    PolicyArns=self.policy_arns,
+                    AssumeRoleSuccess=False,
+                    Region=region,
+                    ExceptionDetails=None,
+                    Name=None,
+                    Arn=None,
+                    Email=None,
+                    Status=None,
+                    Result=None,
+                )
+                sessions.append(account_details)
 
         return sessions
 
     def _get_boto3_client(
         self,
-        clientname: Union[Literal["organizations"], Literal["sts"]],
+        clientname: Union[Literal["organizations"], Literal["sts"], Literal["ec2"]],
         assuming_session: Optional[Session],
     ) -> Any:
         if assuming_session:
             logger.info(f"Using provided Boto3 session {assuming_session}")
             return assuming_session.client(
-                service_name=clientname, config=Config(max_pool_connections=20)
+                service_name=clientname,
+                config=Config(max_pool_connections=self.thread_workers),
             )
         logger.info("No Boto3 session argument: using credential chain")
         return boto3.client(
-            service_name=clientname, config=Config(max_pool_connections=20)
+            service_name=clientname,
+            config=Config(max_pool_connections=self.thread_workers),
         )
 
     def _get_boto3_org_client(
@@ -98,6 +122,10 @@ class CoveHostAccount(object):
 
     def _get_boto3_sts_client(self, assuming_session: Optional[Session]) -> STSClient:
         client: STSClient = self._get_boto3_client("sts", assuming_session)
+        return client
+
+    def _get_boto3_ec2_client(self, assuming_session: Optional[Session]) -> EC2Client:
+        client: EC2Client = self._get_boto3_client("ec2", assuming_session)
         return client
 
     def _resolve_target_accounts(self, target_ids: Optional[List[str]]) -> Set[str]:

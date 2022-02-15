@@ -23,7 +23,8 @@ def cove(
     assuming_session: Optional[Session] = None,
     raise_exception: bool = False,
     org_master: bool = True,
-    thread_workers: int = 20
+    thread_workers: int = 20,
+    regions: Optional[List[str]] = None
 ) -> Callable:
     def decorator(func: Callable[..., Any]) -> Callable[..., CoveOutput]:
         @functools.wraps(func)
@@ -38,6 +39,8 @@ def cove(
                 policy_arns=policy_arns,
                 org_master=org_master,
                 assuming_session=assuming_session,
+                thread_workers=thread_workers,
+                regions=regions,
             )
 
             runner = CoveRunner(
