@@ -4,7 +4,6 @@ from typing import Any, List, Literal, Optional, Sequence, Set, Union
 import boto3
 from boto3.session import Session
 from botocore.config import Config
-from mypy_boto3_ec2.client import EC2Client
 from mypy_boto3_organizations.client import OrganizationsClient
 from mypy_boto3_sts.client import STSClient
 
@@ -17,8 +16,6 @@ DEFAULT_ROLENAME = "OrganizationAccountAccessRole"
 
 
 class CoveHostAccount(object):
-    regions: List[Optional[str]]
-
     def __init__(
         self,
         target_ids: Optional[List[str]],
@@ -37,18 +34,10 @@ class CoveHostAccount(object):
 
         self.sts_client = self._get_boto3_sts_client(assuming_session)
         self.org_client = self._get_boto3_org_client(assuming_session)
-        self.target_regions: Sequence[Optional[str]] = [None]
 
+        self.target_regions: Sequence[Optional[str]] = [None]
         if regions is not None:
-            if (
-                "ALL" in regions
-            ):  # TODO probably a better way to do this than passing ["ALL"]
-                ec2_client = self._get_boto3_ec2_client(assuming_session)
-                self.target_regions = [
-                    r["RegionName"] for r in ec2_client.describe_regions()["Regions"]
-                ]
-            else:
-                self.target_regions = regions
+            self.target_regions = regions
 
         self.provided_ignore_ids = ignore_ids
         self.target_accounts = self._resolve_target_accounts(target_ids)
@@ -97,7 +86,7 @@ class CoveHostAccount(object):
 
     def _get_boto3_client(
         self,
-        clientname: Union[Literal["organizations"], Literal["sts"], Literal["ec2"]],
+        clientname: Union[Literal["organizations"], Literal["sts"]],
         assuming_session: Optional[Session],
     ) -> Any:
         if assuming_session:
@@ -122,10 +111,6 @@ class CoveHostAccount(object):
 
     def _get_boto3_sts_client(self, assuming_session: Optional[Session]) -> STSClient:
         client: STSClient = self._get_boto3_client("sts", assuming_session)
-        return client
-
-    def _get_boto3_ec2_client(self, assuming_session: Optional[Session]) -> EC2Client:
-        client: EC2Client = self._get_boto3_client("ec2", assuming_session)
         return client
 
     def _resolve_target_accounts(self, target_ids: Optional[List[str]]) -> Set[str]:
