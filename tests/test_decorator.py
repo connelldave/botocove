@@ -59,17 +59,6 @@ def test_decorated_simple_func(mock_boto3_session: MagicMock) -> None:
     assert len(cove_output["Results"]) == 2
 
 
-def test_target_ids(mock_boto3_session: MagicMock) -> None:
-    @cove(assuming_session=mock_boto3_session, target_ids=["1"])
-    def simple_func(session: CoveSession) -> str:
-        return "hello"
-
-    cove_output = simple_func()
-    # One account in target_ids, two in mock response.
-    # simple_func calls == one mock AWS accounts
-    assert len(cove_output["Results"]) == 1
-
-
 def test_empty_target_ids(mock_boto3_session: MagicMock) -> None:
     @cove(assuming_session=mock_boto3_session, target_ids=[])
     def simple_func(session: CoveSession) -> str:

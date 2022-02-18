@@ -67,13 +67,13 @@ def test_no_account_id_exception(mock_boto3_session: MagicMock) -> None:
 
 
 def test_handled_exception_in_wrapped_func(mock_boto3_session: MagicMock) -> None:
-    @cove(assuming_session=mock_boto3_session, target_ids=["123"])
+    @cove(assuming_session=mock_boto3_session, target_ids=["456456456456"])
     def simple_func(session: CoveSession) -> None:
         raise Exception("oh no")
 
     results = simple_func()
     expected = {
-        "Id": "123",
+        "Id": "456456456456",
         "RoleName": "OrganizationAccountAccessRole",
         "AssumeRoleSuccess": True,
         "Arn": "hello-arn",
@@ -93,7 +93,11 @@ def test_handled_exception_in_wrapped_func(mock_boto3_session: MagicMock) -> Non
 
 
 def test_raised_exception_in_wrapped_func(mock_boto3_session: MagicMock) -> None:
-    @cove(assuming_session=mock_boto3_session, target_ids=["123"], raise_exception=True)
+    @cove(
+        assuming_session=mock_boto3_session,
+        target_ids=["456456456456"],
+        raise_exception=True,
+    )
     def simple_func(session: CoveSession) -> None:
         raise Exception("oh no")
 
@@ -113,5 +117,23 @@ def test_malformed_ignore_ids(mock_boto3_session: MagicMock) -> None:
     with pytest.raises(
         TypeError,
         match=("All ignore_id in list must be 12 character strings"),
+    ):
+        simple_func()
+
+
+def test_malformed_target_id(mock_boto3_session: MagicMock) -> None:
+    @cove(
+        assuming_session=mock_boto3_session,
+        target_ids=["xu-gzxu-393a2l5b"],
+        ignore_ids=["456456456456"],
+    )
+    def simple_func(session: CoveSession) -> str:
+        return "hello"
+
+    with pytest.raises(
+        TypeError,
+        match=(
+            "target_ids entry is neither an aws account nor an ou: xu-gzxu-393a2l5b"
+        ),
     ):
         simple_func()

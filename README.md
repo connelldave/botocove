@@ -108,8 +108,8 @@ Equivalent to:
 
 `target_ids`: Optional[List[str]]
 
-A list of AWS accounts as strings to attempt to assume role in to. When unset,
-default attempts to use every available account ID in an AWS organization.
+A list of AWS accounts and/or AWS Organization Units as strings to attempt to assume role in to. When unset,
+default attempts to use every available account ID in an AWS organization. When specifing ou's it will recursivly fetch all child ou's as well.
 
 `ignore_ids`: Optional[List[str]]
 
