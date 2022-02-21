@@ -131,7 +131,7 @@ def test_malformed_target_id(mock_boto3_session: MagicMock) -> None:
         return "hello"
 
     with pytest.raises(
-        TypeError,
+        ValueError,
         match=(
             "target_ids entry is neither an aws account nor an ou: xu-gzxu-393a2l5b"
         ),

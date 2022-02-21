@@ -111,22 +111,24 @@ class CoveHostAccount(object):
             # No target_ids passed
             target_accounts = self._gather_org_assume_targets()
         else:
-            target_accounts, target_ous = self._validate_target_accounts(target_ids)
-            target_accounts_from_ous = self._get_all_accounts_by_organization_units(
-                target_ous
+            target_accounts_list, target_ous_list = self._get_validated_target_ids(
+                target_ids
             )
-            target_accounts.extend(target_accounts_from_ous)
+            target_accounts_from_ous = self._get_all_accounts_by_organization_units(
+                target_ous_list
+            )
+            target_accounts_list.extend(target_accounts_from_ous)
 
-            target_accounts = set(target_accounts)
+            target_accounts = set(target_accounts_list)
 
         return target_accounts - validated_ignore_ids
 
-    def _validate_target_accounts(
-        self, target_ids: Optional[List[str]]
+    def _get_validated_target_ids(
+        self, target_ids: List[str]
     ) -> Tuple[List[str], List[str]]:
 
-        target_accounts = list()
-        target_ous = []
+        target_accounts: List[str] = []
+        target_ous: List[str] = []
 
         for target_id in target_ids:
             if not isinstance(target_id, str):
@@ -144,14 +146,16 @@ class CoveHostAccount(object):
         return target_accounts, target_ous
 
     def _get_all_accounts_by_organization_units(
-        self, target_ous: Optional[List[str]]
+        self, target_ous: List[str]
     ) -> List[str]:
 
-        account_list = list()
+        account_list: List[str] = []
 
         for parent_ou in target_ous:
 
-            current_ou_list = []
+            current_ou_list: List[str] = []
+
+            # current_ou_list is mutated and recursivly populated with all childs
             self._get_all_child_ous(parent_ou, current_ou_list)
 
             # for complete list add parent ou as well to list of child ous
@@ -163,44 +167,35 @@ class CoveHostAccount(object):
 
         return account_list
 
-    def _get_all_child_ous(
-        self, parent_ou: str, ou_list: Optional[List[str]] = None
-    ) -> List[str]:
+    def _get_all_child_ous(self, parent_ou: str, ou_list: List[str]) -> None:
 
-        if ou_list == None:
-            ou_list = []
+        child_ous = (
+            self.org_client.get_paginator("list_children")
+            .paginate(ChildType="ORGANIZATIONAL_UNIT", ParentId=parent_ou)
+            .build_full_result()
+        )
 
-        extraArgs = {"ChildType": "ORGANIZATIONAL_UNIT", "ParentId": parent_ou}
+        child_ous_list = [ou["Id"] for ou in child_ous["Children"]]
+        ou_list.extend(child_ous_list)
 
-        paginator = self.org_client.get_paginator("list_children")
-        list_ou_children = paginator.paginate(
-            ChildType="ORGANIZATIONAL_UNIT", ParentId=parent_ou
-        ).build_full_result()
-
-        ous_batch = [child["Id"] for child in list_ou_children["Children"]]
-            ous_batch = [child["Id"] for child in page["Children"]]
-            ou_list.extend(ous_batch)
-            for ou in ous_batch:
-                self._get_all_child_ous(ou, ou_list)
-
-        return ou_list
+        for ou in child_ous_list:
+            self._get_all_child_ous(ou, ou_list)
 
     def _get_accounts_by_organization_units(
-        self, organization_units: Optional[List[str]]
+        self, organization_units: List[str]
     ) -> List[str]:
 
-        account_list = list()
+        account_list: List[str] = []
 
         for ou in organization_units:
 
-            extraArgs = {"ChildType": "ACCOUNT", "ParentId": ou}
+            ou_children = (
+                self.org_client.get_paginator("list_children")
+                .paginate(ChildType="ACCOUNT", ParentId=ou)
+                .build_full_result()
+            )
 
-            paginator = self.org_client.get_paginator("list_children")
-            page_iterator = paginator.paginate(**extraArgs)
-
-            for page in page_iterator:
-                accounts_batch = [x["Id"] for x in page["Children"]]
-                account_list.extend(accounts_batch)
+            account_list.extend(acc["Id"] for acc in ou_children["Children"])
 
         return account_list
 
