@@ -173,9 +173,11 @@ class CoveHostAccount(object):
         extraArgs = {"ChildType": "ORGANIZATIONAL_UNIT", "ParentId": parent_ou}
 
         paginator = self.org_client.get_paginator("list_children")
-        page_iterator = paginator.paginate(**extraArgs)
+        list_ou_children = paginator.paginate(
+            ChildType="ORGANIZATIONAL_UNIT", ParentId=parent_ou
+        ).build_full_result()
 
-        for page in page_iterator:
+        ous_batch = [child["Id"] for child in list_ou_children["Children"]]
             ous_batch = [child["Id"] for child in page["Children"]]
             ou_list.extend(ous_batch)
             for ou in ous_batch:
