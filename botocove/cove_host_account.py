@@ -131,15 +131,15 @@ class CoveHostAccount(object):
         for target_id in target_ids:
             if not isinstance(target_id, str):
                 raise TypeError("All target_id list entries must be strings")
-            if not re.match(r"^\d{12}$", target_id):
-                if not re.match(r"^ou-[0-9a-z]{4,32}-[a-z0-9]{8,32}$", target_id):
-                    raise TypeError(
-                        f"target_ids entry is neither an aws account nor an ou: {target_id}"
-                    )
-                else:
-                    target_ous.append(target_id)
-            else:
+            if re.match(r"^\d{12}$", target_id):
                 target_accounts.append(target_id)
+                continue
+            if re.match(r"^ou-[0-9a-z]{4,32}-[a-z0-9]{8,32}$", target_id):
+                target_ous.append(target_id)
+                continue
+            raise ValueError(
+                f"target_ids entry is neither an aws account nor an ou: {target_id}"
+            )
 
         return target_accounts, target_ous
 
