@@ -106,10 +106,10 @@ class CoveHostAccount(object):
             ignore_accounts, ignore_ous = self._get_validated_ids(
                 self.provided_ignore_ids, "ignore_ids"
             )
-            target_accounts_from_ous = self._get_all_accounts_by_organization_units(
+            ignore_accounts_from_ous = self._get_all_accounts_by_organization_units(
                 ignore_ous
             )
-            ignore_accounts.extend(target_accounts_from_ous)
+            ignore_accounts.extend(ignore_accounts_from_ous)
             ignore_accounts_set = set(ignore_accounts)
         else:
             ignore_accounts_set = set()
