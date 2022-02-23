@@ -31,6 +31,7 @@ flake8-print = "*"
 mypy = "*"
 pre-commit = "*"
 flakeheaven = "*"
+moto = {extras = ["organizations", "sts"], version = "*"}
 
 
 [build-system]

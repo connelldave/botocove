@@ -37,6 +37,8 @@ class CoveHostAccount(object):
         self.sts_client = self._get_boto3_sts_client(assuming_session)
         self.org_client = self._get_boto3_org_client(assuming_session)
 
+        self.host_account_id = self.sts_client.get_caller_identity()["Account"]
+
         if regions is None:
             self.target_regions = [None]
         else:
@@ -57,7 +59,7 @@ class CoveHostAccount(object):
         self.org_master = org_master
 
     def get_cove_sessions(self) -> List[CoveSessionInformation]:
-        logger.info(f"Getting session information qfor {self.target_accounts=}")
+        logger.info(f"Getting session information for {self.target_accounts=}")
         logger.info(f"Role: {self.role_to_assume=} {self.role_session_name=}")
         logger.info(f"Session policy: {self.policy_arns=} {self.policy=}")
         return list(self._generate_account_sessions())
@@ -113,16 +115,14 @@ class CoveHostAccount(object):
 
     def _resolve_target_accounts(self, target_ids: Optional[List[str]]) -> Set[str]:
         # Ensure we never run botocove on the account it's being run from
-        running_account_id = self.sts_client.get_caller_identity()["Account"]
-        validated_ignore_ids = set(running_account_id)
+        validated_ignore_ids = {self.host_account_id}
 
         if self.provided_ignore_ids:
-            validated_ignore_ids.update(self._format_ignore_ids())
+            validated_ignore_ids.update(self._parse_ignore_ids())
         logger.info(f"Ignoring account IDs: {validated_ignore_ids=}")
 
         if target_ids is None:
-            # No target_ids passed
-            validated_ignore_ids.update()
+            # No target_ids passed, get all accounts in org
             target_accounts = self._get_active_org_accounts()
         else:
             # Specific list of IDs passed
@@ -130,7 +130,7 @@ class CoveHostAccount(object):
 
         return target_accounts - validated_ignore_ids
 
-    def _format_ignore_ids(self) -> Set[str]:
+    def _parse_ignore_ids(self) -> Set[str]:
         if not isinstance(self.provided_ignore_ids, list):
             raise TypeError("ignore_ids must be a list of account IDs")
         for account_id in self.provided_ignore_ids:
