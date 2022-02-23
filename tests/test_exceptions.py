@@ -115,8 +115,8 @@ def test_malformed_ignore_ids(mock_boto3_session: MagicMock) -> None:
         return "hello"
 
     with pytest.raises(
-        TypeError,
-        match=("All ignore_id in list must be 12 character strings"),
+        ValueError,
+        match=("ignore_ids entry is neither an aws account nor an ou: cat"),
     ):
         simple_func()
 

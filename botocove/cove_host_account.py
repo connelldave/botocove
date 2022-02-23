@@ -103,47 +103,53 @@ class CoveHostAccount(object):
 
     def _resolve_target_accounts(self, target_ids: Optional[List[str]]) -> Set[str]:
         if self.provided_ignore_ids:
-            validated_ignore_ids = self._format_ignore_ids()
+            ignore_accounts, ignore_ous = self._get_validated_ids(
+                self.provided_ignore_ids, "ignore_ids"
+            )
+            target_accounts_from_ous = self._get_all_accounts_by_organization_units(
+                ignore_ous
+            )
+            ignore_accounts.extend(target_accounts_from_ous)
+            ignore_accounts_set = set(ignore_accounts)
         else:
-            validated_ignore_ids = set()
+            ignore_accounts_set = set()
 
         if target_ids is None:
             # No target_ids passed
-            target_accounts = self._gather_org_assume_targets()
+            target_accounts_set = self._gather_org_assume_targets()
         else:
-            target_accounts_list, target_ous_list = self._get_validated_target_ids(
-                target_ids
+            target_accounts, target_ous = self._get_validated_ids(
+                target_ids, "target_ids"
             )
             target_accounts_from_ous = self._get_all_accounts_by_organization_units(
-                target_ous_list
+                target_ous
             )
-            target_accounts_list.extend(target_accounts_from_ous)
+            target_accounts.extend(target_accounts_from_ous)
+            target_accounts_set = set(target_accounts)
 
-            target_accounts = set(target_accounts_list)
+        return target_accounts_set - ignore_accounts_set
 
-        return target_accounts - validated_ignore_ids
-
-    def _get_validated_target_ids(
-        self, target_ids: List[str]
+    def _get_validated_ids(
+        self, ids: List[str], ids_type: str
     ) -> Tuple[List[str], List[str]]:
 
-        target_accounts: List[str] = []
-        target_ous: List[str] = []
+        accounts: List[str] = []
+        ous: List[str] = []
 
-        for target_id in target_ids:
-            if not isinstance(target_id, str):
-                raise TypeError("All target_id list entries must be strings")
-            if re.match(r"^\d{12}$", target_id):
-                target_accounts.append(target_id)
+        for current_id in ids:
+            if not isinstance(current_id, str):
+                raise TypeError("All {ids_type} must be strings")
+            if re.match(r"^\d{12}$", current_id):
+                accounts.append(current_id)
                 continue
-            if re.match(r"^ou-[0-9a-z]{4,32}-[a-z0-9]{8,32}$", target_id):
-                target_ous.append(target_id)
+            if re.match(r"^ou-[0-9a-z]{4,32}-[a-z0-9]{8,32}$", current_id):
+                ous.append(current_id)
                 continue
             raise ValueError(
-                f"target_ids entry is neither an aws account nor an ou: {target_id}"
+                f"{ids_type} entry is neither an aws account nor an ou: {current_id}"
             )
 
-        return target_accounts, target_ous
+        return accounts, ous
 
     def _get_all_accounts_by_organization_units(
         self, target_ous: List[str]
@@ -198,16 +204,6 @@ class CoveHostAccount(object):
             account_list.extend(acc["Id"] for acc in ou_children["Children"])
 
         return account_list
-
-    def _format_ignore_ids(self) -> Set[str]:
-        if not isinstance(self.provided_ignore_ids, list):
-            raise TypeError("ignore_ids must be a list of account IDs")
-        for account_id in self.provided_ignore_ids:
-            if len(account_id) != 12:
-                raise TypeError("All ignore_id in list must be 12 character strings")
-            if not isinstance(account_id, str):
-                raise TypeError("All ignore_id list entries must be strings")
-        return set(self.provided_ignore_ids)
 
     def _get_active_org_accounts(self) -> Set[str]:
         all_org_accounts = (
