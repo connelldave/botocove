@@ -1,7 +1,9 @@
 # Botocove
 
 Run a function against a selection of AWS accounts, or all AWS accounts in an
-organization, concurrently. By default, opinionated to work with the standard
+organization, concurrently with thread safety. Run in one or multiple regions.
+
+By default, opinionated to work with the standard
 AWS Organization master/member configuration from an organization master
 account.
 
@@ -19,14 +21,16 @@ in every account required, gathering all results into a dictionary.
 at scale. **Test carefully and make idempotent changes**! Please read available
 arguments to understand safe experimentation with this package.
 
-## Requirements
+## Pre-requisites and Info
 
 An IAM user with `sts:assumerole` privilege, and accounts that have a trust
 relationship to the IAM user's account.
 
-By default, the IAM user is expected to be in an AWS Organization Master account
+By default, the IAM user is expected to be in an AWS Organization Master account. You can alter nearly all behaviour of Cove with appropriate [arguments](#arguments)
 
-Default (customisable if unsuitable) expectations are:
+Cove will not execute a function call in the account it's called from.
+
+Default requirements are:
 
 In the organization master account:
 * IAM permissions `sts:assumerole`, `sts:get-caller-identity` and
@@ -35,18 +39,19 @@ In the organization master account:
 In the organization accounts:
 * An `AccountOrganizationAccessRole` role
 
-See the Arguments section for how to change these defaults to work with any
-accounts.
+See the [arguments](#arguments) section for how to change these defaults to work with any
+account configuration, including running without an AWS Organization.
 
 ## Quickstart
-A function written to interact with a `boto3 session` can now be called with
-a `session` from every account required in your AWS organization, assuming
-a role in each account.
+A function written to interact with one
+[boto3 session](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/core/session.html)
+can now be called with a `session` from every account and region required by assuming a
+ role in for each account - except the host account you're running from.
 
 For example:
 
 A standard approach: this function takes a boto3 `session` and gets all IAM
-users from a single AWS account
+users from a single AWS account. You would then manually run it in each account.
 
 ```
 import boto3
@@ -92,49 +97,63 @@ def main():
     print(all_results["FailedAssumeRole"])
 ```
 
+Here's an example of a more customised Cove decorator:
+```
+@cove(
+    target_ids=["123456789101", "234567891011"],
+    rolename="AWSControlTowerExecution",
+    raise_exception=True,
+    regions=["eu-west-1", "eu-west-2", "us-east-1"],
+)
+def do_things(session):
+    # Cove will return six results of True, 2 accounts * 3 regions
+    return True
+```
 ## Arguments
 
 ### Cove
 `@cove()`:
 
-Uses boto3 credential chain to get every AWS account within the
-organization, assume the `OrganizationAccountAccessRole` in it and run the
-wrapped function with that role.
+Uses the standard boto3 credential chain to start with, assuming roles in every account
+required. Defaults to assuming the `OrganizationAccountAccessRole` in every account
+in an AWS organization.
 
 Equivalent to:
 `@cove(target_ids=None, ignore_ids=None, rolename=None, role_session_name=rolename,
     policy=None, policy_arns=None, assuming_session=None, raise_exception=False,
-    org_master=True)`
+    org_master=True, thread_workers=20, regions=None)`
 
-`target_ids`: Optional[List[str]]
+`target_ids`: List[str]
 
 A list of AWS accounts as strings to attempt to assume role in to. When unset,
 default attempts to use every available account ID in an AWS organization.
 
-`ignore_ids`: Optional[List[str]]
+`ignore_ids`: List[str]
 
 A list of AWS account ID's that will not attempt assumption in to. Allows IDs to
 be ignored.
 
-`rolename`: Optional[str]
+`rolename`: str
 
 An IAM role name that will be attempted to assume in all target accounts.
 Defaults to the AWS Organization default, `OrganizationAccountAccessRole`.
 
-`role_session_name`: Optional[str]
+`role_session_name`: str
 
 An IAM role session name that will be passed to each Cove session's `sts.assume_role()` call.
 Defaults to the name of the role being used if unset.
 
-`policy`: Optional[str]
+`policy`: str
 
-A policy document that will be used as a session policy in each Cove session's `sts.assume_role()` call. Unless the value is None, it is passed through via the Policy parameter.
+A policy document that will be used as a session policy in each Cove session's `sts.assume_role()`
+call. Unless the value is None, it is passed through via the Policy parameter.
 
-`policy_arns`: Optional[List[str]]
+`policy_arns`: List[str]
 
-A list of managed policy ARNs that will be used as a session policy in each Cove session's `sts.assume_role()` call. Unless the value is None, it is passed through via the PolicyArns parameter.
+A list of managed policy ARNs that will be used as a session policy in each Cove session's
+ `sts.assume_role()` call. Unless the value is None, it is passed through via the PolicyArns parameter.
 
-`assuming_session`: Optional[Session]
+`assuming_session`: Session
 
 A Boto3 `boto3.session.Session()` object that will be used to call `sts:assumerole`. If not
 provided, cove will instantiate one which will use the standard boto3 credential chain.
@@ -156,8 +175,7 @@ all accounts in the organization, and enrich each `CoveSession` with information
 available (`Id`, `Arn`, `Name`, `Status`, `Email`). Disabling this and providing your
 own full list of accounts may be a desirable optimisation if speed is an issue.
 
-`org_master=False` means `target_ids` must be provided (as no list of accounts
-can be created for you), as well as likely `rolename`. Only `Id` will be
+`org_master=False` means only `Id` will be
 available to `CoveSession`.
 
 `thread_workers`: int
@@ -166,6 +184,13 @@ Defaults to 20. Cove utilises a ThreadPoolWorker under the hood, which can be tu
 with this argument. Number of thread workers directly corrolates to memory usage: see
 [here](#is-botocove-thread-safe)
 
+`regions`: List[str]
+
+If not provided, Cove will respect your profile's default region via the boto credential chain.
+If provided, Cove will run the decorated function in every region named.
+
+You can get all regions with:
+`regions = [r['RegionName'] for r in boto3.client('ec2').describe_regions()['Regions']]`✨
 
 ### CoveSession
 

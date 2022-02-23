@@ -75,11 +75,19 @@ class CoveSession(Session):
                 if v is not None
             }
             creds = self.sts_client.assume_role(**assume_role_args)["Credentials"]  # type: ignore[arg-type] # noqa E501
-            self.initialize_boto_session(
-                aws_access_key_id=creds["AccessKeyId"],
-                aws_secret_access_key=creds["SecretAccessKey"],
-                aws_session_token=creds["SessionToken"],
-            )
+
+            init_session_args = {
+                k: v
+                for k, v in [
+                    ("aws_access_key_id", creds["AccessKeyId"]),
+                    ("aws_secret_access_key", creds["SecretAccessKey"]),
+                    ("aws_session_token", creds["SessionToken"]),
+                    ("region_name", self.session_information["Region"]),
+                ]
+                if v is not None
+            }
+
+            self.initialize_boto_session(**init_session_args)
             self.session_information["AssumeRoleSuccess"] = True
         except ClientError:
             logger.error(

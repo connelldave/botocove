@@ -143,7 +143,7 @@ def test_decorated_simple_func_passed_args(mock_boto3_session: MagicMock) -> Non
             "RoleSessionName": "OrganizationAccountAccessRole",
         }
     ]
-    # Two simple_func calls == two mock AWS accounts
+
     assert cove_output["Results"] == expected
 
 

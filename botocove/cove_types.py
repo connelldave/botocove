@@ -16,6 +16,7 @@ class CoveSessionInformation(TypedDict):
     PolicyArns: Optional[List[str]]
     Result: Any
     ExceptionDetails: Optional[Exception]
+    Region: Optional[str]
 
 
 CoveResults = List[CoveSessionInformation]
