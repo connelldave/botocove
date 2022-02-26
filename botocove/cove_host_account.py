@@ -102,36 +102,37 @@ class CoveHostAccount(object):
         return client
 
     def _resolve_target_accounts(self, target_ids: Optional[List[str]]) -> Set[str]:
+        accounts_to_ignore = self._gather_ignored_accounts()
+        accounts_to_target = self._gather_target_accounts(target_ids)
+        return accounts_to_target - accounts_to_ignore
+
+    def _gather_ignored_accounts(self) -> Set[str]:
+        caller_account_id: str = self.sts_client.get_caller_identity()["Account"]
+
         if self.provided_ignore_ids:
-            ignore_accounts, ignore_ous = self._get_validated_ids(
-                self.provided_ignore_ids, "ignore_ids"
-            )
-            ignore_accounts_from_ous = self._get_all_accounts_by_organization_units(
-                ignore_ous
-            )
-            ignore_accounts.extend(ignore_accounts_from_ous)
-            ignore_accounts_set = set(ignore_accounts)
+            accs, ous = self._get_validated_ids(self.provided_ignore_ids)
+            if ous:
+                accs_from_ous = self._get_all_accounts_by_organization_units(ous)
+                accs.extend(accs_from_ous)
+            accs_set = set(accs)
+            accs_set.add(caller_account_id)
+            return accs_set
         else:
-            ignore_accounts_set = set()
+            # No ignore_ids passed
+            return {caller_account_id}
 
-        if target_ids is None:
-            # No target_ids passed
-            target_accounts_set = self._gather_org_assume_targets()
+    def _gather_target_accounts(self, targets: Optional[List[str]]) -> Set[str]:
+        if targets:
+            accs, ous = self._get_validated_ids(targets)
+            if ous:
+                accs_from_ous = self._get_all_accounts_by_organization_units(ous)
+                accs.extend(accs_from_ous)
+            return set(accs)
         else:
-            target_accounts, target_ous = self._get_validated_ids(
-                target_ids, "target_ids"
-            )
-            target_accounts_from_ous = self._get_all_accounts_by_organization_units(
-                target_ous
-            )
-            target_accounts.extend(target_accounts_from_ous)
-            target_accounts_set = set(target_accounts)
+            # No target_ids passed, getting all accounts in org
+            return self._get_active_org_accounts()
 
-        return target_accounts_set - ignore_accounts_set
-
-    def _get_validated_ids(
-        self, ids: List[str], ids_type: str
-    ) -> Tuple[List[str], List[str]]:
+    def _get_validated_ids(self, ids: List[str]) -> Tuple[List[str], List[str]]:
 
         accounts: List[str] = []
         ous: List[str] = []
@@ -146,7 +147,7 @@ class CoveHostAccount(object):
                 ous.append(current_id)
                 continue
             raise ValueError(
-                f"{ids_type} entry is neither an aws account nor an ou: {current_id}"
+                f"provided id is neither an aws account nor an ou: {current_id}"
             )
 
         return accounts, ous
@@ -180,7 +181,6 @@ class CoveHostAccount(object):
             .paginate(ChildType="ORGANIZATIONAL_UNIT", ParentId=parent_ou)
             .build_full_result()
         )
-
         child_ous_list = [ou["Id"] for ou in child_ous["Children"]]
         ou_list.extend(child_ous_list)
 
@@ -194,13 +194,11 @@ class CoveHostAccount(object):
         account_list: List[str] = []
 
         for ou in organization_units:
-
             ou_children = (
                 self.org_client.get_paginator("list_children")
                 .paginate(ChildType="ACCOUNT", ParentId=ou)
                 .build_full_result()
             )
-
             account_list.extend(acc["Id"] for acc in ou_children["Children"])
 
         return account_list
@@ -212,19 +210,3 @@ class CoveHostAccount(object):
             .build_full_result()["Accounts"]
         )
         return {acc["Id"] for acc in all_org_accounts if acc["Status"] == "ACTIVE"}
-
-    def _build_account_ignore_list(self) -> Set[str]:
-        accounts_to_ignore: Set[str] = {
-            self.sts_client.get_caller_identity()["Account"]
-        }
-        if self.provided_ignore_ids:
-            accounts_to_ignore.update(self.provided_ignore_ids)
-
-        logger.info(f"{accounts_to_ignore=}")
-        return accounts_to_ignore
-
-    def _gather_org_assume_targets(self) -> Set[str]:
-        accounts_to_ignore = self._build_account_ignore_list()
-        active_accounts = self._get_active_org_accounts()
-        target_accounts = active_accounts - accounts_to_ignore
-        return target_accounts

@@ -116,7 +116,7 @@ def test_malformed_ignore_ids(mock_boto3_session: MagicMock) -> None:
 
     with pytest.raises(
         ValueError,
-        match=("ignore_ids entry is neither an aws account nor an ou: cat"),
+        match=("provided id is neither an aws account nor an ou: cat"),
     ):
         simple_func()
 
@@ -132,8 +132,6 @@ def test_malformed_target_id(mock_boto3_session: MagicMock) -> None:
 
     with pytest.raises(
         ValueError,
-        match=(
-            "target_ids entry is neither an aws account nor an ou: xu-gzxu-393a2l5b"
-        ),
+        match=("provided id is neither an aws account nor an ou: xu-gzxu-393a2l5b"),
     ):
         simple_func()
