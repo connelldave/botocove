@@ -23,7 +23,7 @@ class CoveRunner(object):
     ) -> None:
 
         self.host_account = host_account
-        self.sessions = host_account.get_cove_session_info()
+        self.sessions = host_account.get_cove_sessions()
 
         self.cove_wrapped_func = func
         self.raise_exception = raise_exception
