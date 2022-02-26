@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Any, Iterable, List, Literal, Optional, Sequence, Set, Union, Tuple
+from typing import Any, Iterable, List, Literal, Optional, Sequence, Set, Tuple, Union
 
 import boto3
 from boto3.session import Session
@@ -128,8 +128,8 @@ class CoveHostAccount(object):
             if ous:
                 accs_from_ous = self._get_all_accounts_by_organization_units(ous)
                 accs.extend(accs_from_ous)
-            ignored_accounts.update(caller_account_id)
-            return accs_set
+            ignored_accounts.update(ignored_accounts)
+            return ignored_accounts
         else:
             # No ignore_ids passed
             return ignored_accounts
