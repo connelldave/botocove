@@ -59,17 +59,6 @@ def test_decorated_simple_func(mock_boto3_session: MagicMock) -> None:
     assert len(cove_output["Results"]) == 2
 
 
-def test_ignore_ids(mock_boto3_session: MagicMock) -> None:
-    @cove(assuming_session=mock_boto3_session, ignore_ids=["123123123123"])
-    def simple_func(session: CoveSession) -> str:
-        return "hello"
-
-    cove_output = simple_func()
-    # Two in mock response, one ignored.
-    # simple_func calls == one mock AWS accounts
-    assert len(cove_output["Results"]) == 1
-
-
 def test_target_and_ignore_ids(mock_boto3_session: MagicMock) -> None:
     @cove(
         assuming_session=mock_boto3_session,

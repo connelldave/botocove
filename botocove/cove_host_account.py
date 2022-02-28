@@ -118,17 +118,22 @@ class CoveHostAccount(object):
         accounts_to_ignore = self._gather_ignored_accounts()
         logger.info(f"Ignoring account IDs: {accounts_to_ignore=}")
         accounts_to_target = self._gather_target_accounts(target_ids)
-        return accounts_to_target - accounts_to_ignore
+        final_accounts: Set = accounts_to_target - accounts_to_ignore
+        if len(final_accounts) < 1:
+            raise ValueError(
+                "There are no eligible account ids to run decorated func against"
+            )
+        return final_accounts
 
     def _gather_ignored_accounts(self) -> Set[str]:
         ignored_accounts = {self.host_account_id}
 
         if self.provided_ignore_ids:
             accs, ous = self._get_validated_ids(self.provided_ignore_ids)
+            ignored_accounts.update(accs)
             if ous:
                 accs_from_ous = self._get_all_accounts_by_organization_units(ous)
-                accs.extend(accs_from_ous)
-            ignored_accounts.update(ignored_accounts)
+                ignored_accounts.update(accs_from_ous)
             return ignored_accounts
         else:
             # No ignore_ids passed
