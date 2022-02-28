@@ -121,6 +121,22 @@ def test_malformed_ignore_ids(mock_boto3_session: MagicMock) -> None:
         simple_func()
 
 
+def test_malformed_ignore_ids_type(mock_boto3_session: MagicMock) -> None:
+    @cove(
+        assuming_session=mock_boto3_session,
+        target_ids=None,
+        ignore_ids=[456456456456],  # type: ignore
+    )
+    def simple_func(session: CoveSession) -> str:
+        return "hello"
+
+    with pytest.raises(
+        TypeError,
+        match=("All provided account and ou id's must be strings"),
+    ):
+        simple_func()
+
+
 def test_malformed_target_id(mock_boto3_session: MagicMock) -> None:
     @cove(
         assuming_session=mock_boto3_session,
@@ -133,5 +149,21 @@ def test_malformed_target_id(mock_boto3_session: MagicMock) -> None:
     with pytest.raises(
         ValueError,
         match=("provided id is neither an aws account nor an ou: xu-gzxu-393a2l5b"),
+    ):
+        simple_func()
+
+
+def test_malformed_target_id_type(mock_boto3_session: MagicMock) -> None:
+    @cove(
+        assuming_session=mock_boto3_session,
+        target_ids=[456456456456],  # type: ignore
+        ignore_ids=[],
+    )
+    def simple_func(session: CoveSession) -> str:
+        return "hello"
+
+    with pytest.raises(
+        TypeError,
+        match=("All provided account and ou id's must be strings"),
     ):
         simple_func()

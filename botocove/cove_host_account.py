@@ -157,7 +157,7 @@ class CoveHostAccount(object):
 
         for current_id in ids:
             if not isinstance(current_id, str):
-                raise TypeError("All {ids_type} must be strings")
+                raise TypeError("All provided account and ou id's must be strings")
             if re.match(r"^\d{12}$", current_id):
                 accounts.append(current_id)
                 continue
