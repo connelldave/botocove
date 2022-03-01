@@ -132,7 +132,9 @@ def test_malformed_ignore_ids_type(mock_boto3_session: MagicMock) -> None:
 
     with pytest.raises(
         TypeError,
-        match=("All provided account and ou id's must be strings"),
+        match=(
+            "456456456456 is an incorrect type: all account and ou id's must be strings not <class 'int'>"  # noqa E501
+        ),
     ):
         simple_func()
 
@@ -164,6 +166,8 @@ def test_malformed_target_id_type(mock_boto3_session: MagicMock) -> None:
 
     with pytest.raises(
         TypeError,
-        match=("All provided account and ou id's must be strings"),
+        match=(
+            "456456456456 is an incorrect type: all account and ou id's must be strings not <class 'int'>"  # noqa E501
+        ),
     ):
         simple_func()

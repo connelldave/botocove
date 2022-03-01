@@ -134,10 +134,8 @@ class CoveHostAccount(object):
             if ous:
                 accs_from_ous = self._get_all_accounts_by_organization_units(ous)
                 ignored_accounts.update(accs_from_ous)
-            return ignored_accounts
-        else:
-            # No ignore_ids passed
-            return ignored_accounts
+
+        return ignored_accounts
 
     def _gather_target_accounts(self, targets: Optional[List[str]]) -> Set[str]:
         if targets:
@@ -157,7 +155,9 @@ class CoveHostAccount(object):
 
         for current_id in ids:
             if not isinstance(current_id, str):
-                raise TypeError("All provided account and ou id's must be strings")
+                raise TypeError(
+                    f"{current_id} is an incorrect type: all account and ou id's must be strings not {type(current_id)}"  # noqa E501
+                )
             if re.match(r"^\d{12}$", current_id):
                 accounts.append(current_id)
                 continue
