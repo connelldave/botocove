@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.6.0] - 2022-04-03
+### Added
+- Botocove now supports AWS Organizational Unit IDs as a target and ignore ID. Child
+accounts and OUs will be recursively discovered and targeted for the passed OU ID.
 ## [1.5.2] - 2022-23-02
 ### Added
 - Botocove now supports a regions argument, allowing sessions to be run across

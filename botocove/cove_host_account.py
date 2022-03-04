@@ -1,11 +1,24 @@
 import logging
 import re
-from typing import Any, Iterable, List, Literal, Optional, Sequence, Set, Tuple, Union
+from functools import lru_cache
+from typing import (
+    Any,
+    Iterable,
+    List,
+    Literal,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Union,
+    cast,
+)
 
 import boto3
 from boto3.session import Session
 from botocore.config import Config
 from mypy_boto3_organizations.client import OrganizationsClient
+from mypy_boto3_organizations.type_defs import ListChildrenResponseTypeDef
 from mypy_boto3_sts.client import STSClient
 
 from botocove.cove_types import CoveSessionInformation
@@ -193,12 +206,9 @@ class CoveHostAccount(object):
         return account_list
 
     def _get_all_child_ous(self, parent_ou: str, ou_list: List[str]) -> None:
-
-        child_ous = (
-            self.org_client.get_paginator("list_children")
-            .paginate(ChildType="ORGANIZATIONAL_UNIT", ParentId=parent_ou)
-            .build_full_result()
-        )
+        """Depth-first recursion mutates the current_ou_list present in the calling
+        function to establish all children of a parent OU"""
+        child_ous = self._get_child_ous(parent_ou)
         child_ous_list = [ou["Id"] for ou in child_ous["Children"]]
         ou_list.extend(child_ous_list)
 
@@ -212,11 +222,7 @@ class CoveHostAccount(object):
         account_list: List[str] = []
 
         for ou in organization_units:
-            ou_children = (
-                self.org_client.get_paginator("list_children")
-                .paginate(ChildType="ACCOUNT", ParentId=ou)
-                .build_full_result()
-            )
+            ou_children = self._get_child_accounts(ou)
             account_list.extend(acc["Id"] for acc in ou_children["Children"])
 
         return account_list
@@ -228,3 +234,21 @@ class CoveHostAccount(object):
             .build_full_result()["Accounts"]
         )
         return {acc["Id"] for acc in all_org_accounts if acc["Status"] == "ACTIVE"}
+
+    @lru_cache()
+    def _get_child_ous(self, parent_ou: str) -> ListChildrenResponseTypeDef:
+        return cast(
+            ListChildrenResponseTypeDef,
+            self.org_client.get_paginator("list_children")
+            .paginate(ChildType="ORGANIZATIONAL_UNIT", ParentId=parent_ou)
+            .build_full_result(),
+        )
+
+    @lru_cache()
+    def _get_child_accounts(self, parent_ou: str) -> ListChildrenResponseTypeDef:
+        return cast(
+            ListChildrenResponseTypeDef,
+            self.org_client.get_paginator("list_children")
+            .paginate(ChildType="ACCOUNT", ParentId=parent_ou)
+            .build_full_result(),
+        )

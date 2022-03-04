@@ -1,21 +1,21 @@
 # Botocove
 
-Run a function against a selection of AWS accounts, or all AWS accounts in an
-organization, concurrently with thread safety. Run in one or multiple regions.
+Run a function against a selection of AWS accounts, Organizational Units (OUs)
+or all AWS accounts in an organization, concurrently with thread safety.
+Run in one or multiple regions.
 
-By default, opinionated to work with the standard
-AWS Organization master/member configuration from an organization master
-account.
+Opinionated by default to work with the standard AWS Organization master/member
+configuration from an organization master account but customisable for any context.
 
 - Fast
 - Easy
 - Dolphin Themed 🐬
 
-A simple decorator for functions to remove time and complexity burden. Uses
+Botocove is a simple decorator for functions to remove time and complexity burden. Uses
 `ThreadPoolExecutor` to run boto3 sessions against AWS accounts concurrently.
 
-Decorating a function in `@cove` provides a boto3 session to the function and runs it
-in every account required, gathering all results into a dictionary.
+Decorating a function in `@cove` provides a boto3 session to the decorated Python
+function and runs it in every account requested, gathering all results into a dictionary.
 
 **Warning**: this tool gives you the potential to make dangerous changes
 at scale. **Test carefully and make idempotent changes**! Please read available
@@ -100,7 +100,7 @@ def main():
 Here's an example of a more customised Cove decorator:
 ```
 @cove(
-    target_ids=["123456789101", "234567891011"],
+    target_ids=["123456789101", "234567891011"], # also accepts OU ids!
     rolename="AWSControlTowerExecution",
     raise_exception=True,
     regions=["eu-west-1", "eu-west-2", "us-east-1"],
@@ -125,13 +125,18 @@ Equivalent to:
 
 `target_ids`: List[str]
 
-A list of AWS accounts and/or AWS Organization Units as strings to attempt to assume role in to. When unset,
-default attempts to use every available account ID in an AWS organization. When specifing ou's it will recursivly fetch all child ou's as well.
+A list of AWS account IDs and/or AWS Organization Units IDs to attempt to assume role
+in to. When unset, attempts to use every available account ID in an AWS organization.
+When specifing target OU's, all child OUs and accounts belonging to that OU will be
+collected.
 
 `ignore_ids`: List[str]
 
-A list of AWS account ID's that will not attempt assumption in to. Allows IDs to
-be ignored.
+A list of AWS account ID's and OU's to prevent functions being run by Cove. Ignored IDs
+takes precedence over `target_ids`. Providing an OU ID will collect
+all child OUs and accounts to ignore.
+
+The calling account that is running the Cove-wrapped function at runtime is always ignored.
 
 `rolename`: str
 
