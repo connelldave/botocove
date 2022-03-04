@@ -33,16 +33,19 @@ Cove will not execute a function call in the account it's called from.
 Default requirements are:
 
 In the organization master account:
-* IAM permissions `sts:assumerole`, `sts:get-caller-identity` and
+
+- IAM permissions `sts:assumerole`, `sts:get-caller-identity` and
 `organizations:list-accounts`
 
 In the organization accounts:
-* An `AccountOrganizationAccessRole` role
+
+- An `AccountOrganizationAccessRole` role
 
 See the [arguments](#arguments) section for how to change these defaults to work with any
 account configuration, including running without an AWS Organization.
 
 ## Quickstart
+
 A function written to interact with one
 [boto3 session](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/core/session.html)
 can now be called with a `session` from every account and region required by assuming a
@@ -53,7 +56,7 @@ For example:
 A standard approach: this function takes a boto3 `session` and gets all IAM
 users from a single AWS account. You would then manually run it in each account.
 
-```
+```python
 import boto3
 
 
@@ -71,7 +74,7 @@ def main():
 Now with `@cove`: a session for every account in the organization is injected
 by the decorator. A safe example to run as a test!
 
-```
+```python
 import boto3
 from botocove import cove
 
@@ -98,7 +101,8 @@ def main():
 ```
 
 Here's an example of a more customised Cove decorator:
-```
+
+```python
 @cove(
     target_ids=["123456789101", "234567891011"], # also accepts OU ids!
     rolename="AWSControlTowerExecution",
@@ -109,9 +113,11 @@ def do_things(session):
     # Cove will return six results of True, 2 accounts * 3 regions
     return True
 ```
+
 ## Arguments
 
 ### Cove
+
 `@cove()`:
 
 Uses the standard boto3 credential chain to start with, assuming roles in every account
@@ -204,7 +210,7 @@ are available with the `session_information` attribute.
 
 Otherwise, it functions exactly as calling `boto3` would.
 
-```
+```python
 @cove()
 def do_nothing(session: CoveSession):
     print(session.session_information) # Outputs a dict of known information
@@ -215,15 +221,18 @@ def do_nothing(session: CoveSession):
 ## Return values
 
 Wrapped functions return a dictionary. Each value contains List[Dict[str, Any]]:
-```
+
+```python
 {
     "Results": results:
     "Exceptions": exceptions,
     "FailedAssumeRole": invalid_sessions,
 }
 ```
+
 An example of cove_output["Results"]:
-```
+
+```python
 [ # A list of dictionaries per account called
     {
     'Id': '123456789010',
@@ -255,8 +264,8 @@ that botocove is run from (eg, an organization master account) -
 boto3 sessions have a significant memory footprint:
 Version 1.5.0 of botocove was re-written to ensure that boto3 sessions are released
 after completion which resolved memory starvation issues. This was discussed here:
-https://github.com/connelldave/botocove/issues/20 and a relevant boto3 issue is here:
-https://github.com/boto/boto3/issues/1670
+<https://github.com/connelldave/botocove/issues/20> and a relevant boto3 issue is here:
+<https://github.com/boto/boto3/issues/1670>
 
 ### botocove?
 
