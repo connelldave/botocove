@@ -9,6 +9,11 @@ repos:
       - id: debug-statements
       - id: check-yaml
 
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.4.0
+    hooks:
+    - id: markdownlint-cli2
+
   - repo: https://github.com/pycqa/isort
     rev: 5.10.1
     hooks:

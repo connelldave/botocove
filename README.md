@@ -5,17 +5,20 @@ or all AWS accounts in an organization, concurrently with thread safety.
 Run in one or multiple regions.
 
 Opinionated by default to work with the standard AWS Organization master/member
-configuration from an organization master account but customisable for any context.
+configuration from an organization master account but customisable for any
+context.
 
 - Fast
 - Easy
 - Dolphin Themed 🐬
 
-Botocove is a simple decorator for functions to remove time and complexity burden. Uses
-`ThreadPoolExecutor` to run boto3 sessions against AWS accounts concurrently.
+Botocove is a simple decorator for functions to remove time and complexity
+burden. Uses`ThreadPoolExecutor` to run boto3 sessions against AWS accounts
+concurrently.
 
-Decorating a function in `@cove` provides a boto3 session to the decorated Python
-function and runs it in every account requested, gathering all results into a dictionary.
+Decorating a function in `@cove` provides a boto3 session to the decorated
+Python function and runs it in every account requested, gathering all results
+into a dictionary.
 
 **Warning**: this tool gives you the potential to make dangerous changes
 at scale. **Test carefully and make idempotent changes**! Please read available
@@ -26,7 +29,9 @@ arguments to understand safe experimentation with this package.
 An IAM user with `sts:assumerole` privilege, and accounts that have a trust
 relationship to the IAM user's account.
 
-By default, the IAM user is expected to be in an AWS Organization Master account. You can alter nearly all behaviour of Cove with appropriate [arguments](#arguments)
+By default, the IAM user is expected to be in an AWS Organization Master
+account. You can alter nearly all behaviour of Cove with appropriate
+[arguments](#arguments)
 
 Cove will not execute a function call in the account it's called from.
 
@@ -41,15 +46,16 @@ In the organization accounts:
 
 - An `AccountOrganizationAccessRole` role
 
-See the [arguments](#arguments) section for how to change these defaults to work with any
-account configuration, including running without an AWS Organization.
+See the [arguments](#arguments) section for how to change these defaults to work
+with any account configuration, including running without an AWS Organization.
 
 ## Quickstart
 
 A function written to interact with one
 [boto3 session](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/core/session.html)
-can now be called with a `session` from every account and region required by assuming a
- role in for each account - except the host account you're running from.
+can now be called with a `session` from every account and region required by
+assuming a role in for each account - except the host account you're running
+from.
 
 For example:
 
@@ -120,29 +126,35 @@ def do_things(session):
 
 `@cove()`:
 
-Uses the standard boto3 credential chain to start with, assuming roles in every account
-required. Defaults to assuming the `OrganizationAccountAccessRole` in every account
-in an AWS organization.
+Uses the standard boto3 credential chain to start with, assuming roles in every
+account required. Defaults to assuming the `OrganizationAccountAccessRole` in
+every account in an AWS organization.
 
 Equivalent to:
-`@cove(target_ids=None, ignore_ids=None, rolename=None, role_session_name=rolename,
+
+```python
+@cove(
+    target_ids=None, ignore_ids=None, rolename=None, role_session_name=None,
     policy=None, policy_arns=None, assuming_session=None, raise_exception=False,
-    org_master=True, thread_workers=20, regions=None)`
+    org_master=True, thread_workers=20, regions=None
+    )
+```
 
 `target_ids`: List[str]
 
-A list of AWS account IDs and/or AWS Organization Units IDs to attempt to assume role
-in to. When unset, attempts to use every available account ID in an AWS organization.
-When specifing target OU's, all child OUs and accounts belonging to that OU will be
-collected.
+A list of AWS account IDs and/or AWS Organization Units IDs to attempt to assume
+role in to. When unset, attempts to use every available account ID in an AWS
+organization. When specifying target OU's, all child OUs and accounts belonging
+to that OU will be collected.
 
 `ignore_ids`: List[str]
 
-A list of AWS account ID's and OU's to prevent functions being run by Cove. Ignored IDs
-takes precedence over `target_ids`. Providing an OU ID will collect
+A list of AWS account ID's and OU's to prevent functions being run by Cove.
+Ignored IDs takes precedence over `target_ids`. Providing an OU ID will collect
 all child OUs and accounts to ignore.
 
-The calling account that is running the Cove-wrapped function at runtime is always ignored.
+The calling account that is running the Cove-wrapped function at runtime is
+always ignored.
 
 `rolename`: str
 
@@ -151,23 +163,26 @@ Defaults to the AWS Organization default, `OrganizationAccountAccessRole`.
 
 `role_session_name`: str
 
-An IAM role session name that will be passed to each Cove session's `sts.assume_role()` call.
-Defaults to the name of the role being used if unset.
+An IAM role session name that will be passed to each Cove session's
+`sts.assume_role()` call. Defaults to the name of the role being used if unset.
 
 `policy`: str
 
-A policy document that will be used as a session policy in each Cove session's `sts.assume_role()`
-call. Unless the value is None, it is passed through via the Policy parameter.
+A policy document that will be used as a session policy in each Cove session's
+`sts.assume_role()` call. Unless the value is None, it is passed through via the
+Policy parameter.
 
 `policy_arns`: List[str]
 
-A list of managed policy ARNs that will be used as a session policy in each Cove session's
- `sts.assume_role()` call. Unless the value is None, it is passed through via the PolicyArns parameter.
+A list of managed policy ARNs that will be used as a session policy in each Cove
+session's `sts.assume_role()` call. Unless the value is None, it is passed
+through via the PolicyArns parameter.
 
 `assuming_session`: Session
 
-A Boto3 `boto3.session.Session()` object that will be used to call `sts:assumerole`. If not
-provided, cove will instantiate one which will use the standard boto3 credential chain.
+A Boto3 `boto3.session.Session()` object that will be used to call
+`sts:assumerole`. If not provided, cove will instantiate one which will use the
+standard boto3 credential chain.
 
 `raise_exception`: bool
 
@@ -183,25 +198,31 @@ It is vital to run interruptible, idempotent code with this argument as `True`.
 
 Defaults to True. When True, will leverage the Boto3 Organizations API to list
 all accounts in the organization, and enrich each `CoveSession` with information
-available (`Id`, `Arn`, `Name`, `Status`, `Email`). Disabling this and providing your
-own full list of accounts may be a desirable optimisation if speed is an issue.
+available (`Id`, `Arn`, `Name`, `Status`, `Email`). Disabling this and providing
+your own full list of accounts may be a desirable optimisation if speed is an
+issue.
 
-`org_master=False` means only `Id` will be
-available to `CoveSession`.
+`org_master=False` means only `Id` will be available to `CoveSession`.
 
 `thread_workers`: int
 
-Defaults to 20. Cove utilises a ThreadPoolWorker under the hood, which can be tuned
-with this argument. Number of thread workers directly corrolates to memory usage: see
-[here](#is-botocove-thread-safe)
+Defaults to 20. Cove utilises a ThreadPoolWorker under the hood, which can be
+tuned with this argument. Number of thread workers directly correlates to memory
+usage: see [here](#is-botocove-thread-safe)
 
 `regions`: List[str]
 
-If not provided, Cove will respect your profile's default region via the boto credential chain.
-If provided, Cove will run the decorated function in every region named.
+If not provided, Cove will respect your profile's default region via the boto
+credential chain. If provided, Cove will run the decorated function in every
+region named.
 
 You can get all regions with:
-`regions = [r['RegionName'] for r in boto3.client('ec2').describe_regions()['Regions']]`✨
+
+```python
+regions = [
+    r['RegionName'] for r in boto3.client('ec2').describe_regions()['Regions']
+    ]
+```
 
 ### CoveSession
 
@@ -247,29 +268,33 @@ An example of cove_output["Results"]:
 
 ### Is botocove thread safe?
 
-botocove is thread safe, but number of threaded executions will be bound by memory,
-network IO and AWS api rate limiting. Defaulting to 20 thread workers is a reasonable
-starting point, but can be further optimised for runtime with experimentation.
+botocove is thread safe, but number of threaded executions will be bound by
+memory, network IO and AWS api rate limiting. Defaulting to 20 thread workers is
+a reasonable starting point, but can be further optimised for runtime with
+experimentation.
 
 botocove has no constraint or understanding of the function it's wrapping: it is
-recommended to avoid shared state for botocove wrapped functions, and to write simple
-functions that are written to be idempotent and independent.
+recommended to avoid shared state for botocove wrapped functions, and to write
+simple functions that are written to be idempotent and independent.
 
-[Boto3 Session objects are not natively thread safe and should not be shared across threads](https://boto3.amazonaws.com/v1/documentation/api/1.14.31/guide/session.html#multithreading-or-multiprocessing-with-sessions).
-However, botocove is instantiating a new Session object per thread/account and running
-decorated functions inside their own closure. A shared client is used from the host account
-that botocove is run from (eg, an organization master account) -
-[clients are threadsafe](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/clients.html#multithreading-or-multiprocessing-with-clients) and allow this.
+[Boto3 Session objects are not natively thread safe](https://boto3.amazonaws.com/v1/documentation/api/1.14.31/guide/session.html#multithreading-or-multiprocessing-with-sessions)
+
+and should not be shared across threads. However, botocove is instantiating a
+new Session object per thread/account and running decorated functions inside
+their own closure. A shared client is used from the host account that botocove
+is run from (eg, an organization master account) -
+[clients are threadsafe](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/clients.html#multithreading-or-multiprocessing-with-clients)
+and allow this.
 
 boto3 sessions have a significant memory footprint:
-Version 1.5.0 of botocove was re-written to ensure that boto3 sessions are released
-after completion which resolved memory starvation issues. This was discussed here:
-<https://github.com/connelldave/botocove/issues/20> and a relevant boto3 issue is here:
-<https://github.com/boto/boto3/issues/1670>
+Version 1.5.0 of botocove was re-written to ensure that boto3 sessions are
+released after completion which resolved memory starvation issues. This was
+discussed here: <https://github.com/connelldave/botocove/issues/20> and a
+relevant boto3 issue is here: <https://github.com/boto/boto3/issues/1670>
 
 ### botocove?
 
-It turns out that the Amazon's Boto dolphins are solitary or small-group animals,
-unlike the large pods of dolphins in the oceans. This killed my "large group of
-boto" idea, so the next best idea was where might they all shelter together... a
-cove!
+It turns out that the Amazon's Boto dolphins are solitary or small-group
+animals, unlike the large pods of dolphins in the oceans. This killed my "large
+group of boto" idea, so the next best idea was where might they all shelter
+together... a cove!
