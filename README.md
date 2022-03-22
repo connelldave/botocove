@@ -42,9 +42,10 @@ In the organization master account:
 - IAM permissions `sts:assumerole`, `sts:get-caller-identity` and
 `organizations:list-accounts`
 
-In the organization accounts:
+In the organization member accounts:
 
-- An `AccountOrganizationAccessRole` role
+- An
+  [`OrganizationAccountAccessRole` role](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_accounts_access.html)
 
 See the [arguments](#arguments) section for how to change these defaults to work
 with any account configuration, including running without an AWS Organization.
@@ -81,6 +82,7 @@ Now with `@cove`: a session for every account in the organization is injected
 by the decorator. A safe example to run as a test!
 
 ```python
+from pprint import pprint
 import boto3
 from botocove import cove
 
@@ -97,13 +99,17 @@ def main():
 
     # A list of dictionaries for each account, with account details included.
     # Each account's get_iam_users return is in a "Result" key.
-    print(all_results["Results"])
+    pprint(all_results["Results"])
 
     # A list of dictionaries for each account that raised an exception
-    print(all_results["Exceptions"])
+    pprint(all_results["Exceptions"])
 
     # A list of dictionaries for each account that could not be assumed into
-    print(all_results["FailedAssumeRole"])
+    pprint(all_results["FailedAssumeRole"])
+
+
+if __name__ == "__main__":
+    main()
 ```
 
 Here's an example of a more customised Cove decorator:
