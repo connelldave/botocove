@@ -44,7 +44,7 @@ In the organization master account:
 
 In the organization accounts:
 
-- An `AccountOrganizationAccessRole` role
+- An `OrganizationAccountAccessRole` role
 
 See the [arguments](#arguments) section for how to change these defaults to work
 with any account configuration, including running without an AWS Organization.
