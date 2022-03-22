@@ -106,6 +106,10 @@ def main():
 
     # A list of dictionaries for each account that could not be assumed into
     pprint(all_results["FailedAssumeRole"])
+
+
+if __name__ == "__main__":
+    main()
 ```
 
 Here's an example of a more customised Cove decorator:
