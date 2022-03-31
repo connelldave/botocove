@@ -1,18 +1,10 @@
-from typing import Iterable, List, Optional
+from typing import List, Optional
 
 import pytest
 from boto3 import Session
-from moto import mock_organizations, mock_sts
 from mypy_boto3_organizations.type_defs import AccountTypeDef
 
 from botocove import CoveSession, cove
-
-
-@pytest.fixture()
-def mock_session() -> Iterable[Session]:
-    """Returns a session with mock AWS services."""
-    with mock_sts(), mock_organizations():
-        yield Session()
 
 
 @pytest.fixture()

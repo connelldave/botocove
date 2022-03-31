@@ -1,10 +1,10 @@
 import logging
 from typing import Iterator
 
-import boto3
 import pytest
 from _pytest.logging import LogCaptureFixture
 from _pytest.monkeypatch import MonkeyPatch
+from boto3 import Session
 from moto import mock_organizations, mock_sts
 
 from tests.moto_mock_org.moto_models import LargeOrg, SmallOrg
@@ -24,22 +24,23 @@ def _clean_env(monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setenv(env_var, "broken_not_real_profile")
 
 
+@pytest.fixture()
+def mock_session() -> Iterator[Session]:
+    """Returns a session with mock AWS services."""
+    with mock_sts(), mock_organizations():
+        yield Session()
+
+
 # We tear down each fixture in the default function scope as Moto isn't thread-safe
 # Maintaining Moto mocks between tests means shared state mutation
 # We could just use one mock org instead - option for future.
 @pytest.fixture()
-def mock_small_org() -> Iterator[SmallOrg]:
+def mock_small_org(mock_session: Session) -> SmallOrg:
     """Uses moto mocking library to allow creation of fake AWS environment."""
-    with mock_sts():
-        with mock_organizations():
-            session = boto3.session.Session()
-            yield SmallOrg(session=session)
+    return SmallOrg(session=mock_session)
 
 
 @pytest.fixture()
-def mock_large_org() -> Iterator[LargeOrg]:
+def mock_large_org(mock_session: Session) -> LargeOrg:
     """Uses moto mocking library to allow creation of fake AWS environment."""
-    with mock_sts():
-        with mock_organizations():
-            session = boto3.session.Session()
-            yield LargeOrg(session=session)
+    return LargeOrg(session=mock_session)
