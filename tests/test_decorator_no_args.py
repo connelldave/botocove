@@ -1,40 +1,23 @@
-from datetime import datetime
-from typing import Tuple
-from unittest.mock import MagicMock
+from typing import List, Tuple
 
 import pytest
-from pytest_mock import MockerFixture
+from boto3 import Session
+from mypy_boto3_organizations.type_defs import AccountTypeDef
 
 from botocove import CoveSession, cove
 
 
 @pytest.fixture()
-def patch_boto3_client(mocker: MockerFixture) -> MagicMock:
-    mock_boto3 = mocker.patch("botocove.cove_host_account.boto3")
-    list_accounts_result = {"Accounts": [{"Id": "12345689012", "Status": "ACTIVE"}]}
-    mock_boto3.client.return_value.get_paginator.return_value.paginate.return_value.build_full_result.return_value = (  # noqa E501
-        list_accounts_result
-    )
-    describe_account_results = [
-        {
-            "Account": {
-                "Id": "1234",
-                "Arn": "hello-arn",
-                "Email": "email@address.com",
-                "Name": "an-account-name",
-                "Status": "ACTIVE",
-                "JoinedMethod": "CREATED",
-                "JoinedTimestamp": datetime(2015, 1, 1),
-            }
-        }
-    ]
-    mock_boto3.client.return_value.describe_account.side_effect = (
-        describe_account_results
-    )
-    return mock_boto3
+def org_accounts(mock_session: Session) -> List[AccountTypeDef]:
+    """Returns a list of the accounts in the mock org. Index 0 is the management
+    account."""
+    org = mock_session.client("organizations")
+    org.create_organization(FeatureSet="ALL")
+    org.create_account(Email="email@address.com", AccountName="an-account-name")
+    return org.list_accounts()["Accounts"]
 
 
-def test_decorated_simple_func(patch_boto3_client: MagicMock) -> None:
+def test_decorated_simple_func(org_accounts: List[AccountTypeDef]) -> None:
     @cove
     def simple_func(session: CoveSession) -> str:
         return "hello"
@@ -42,10 +25,10 @@ def test_decorated_simple_func(patch_boto3_client: MagicMock) -> None:
     cove_output = simple_func()
     expected = [
         {
-            "Id": "12345689012",
-            "Arn": "hello-arn",
-            "Email": "email@address.com",
-            "Name": "an-account-name",
+            "Id": org_accounts[1]["Id"],
+            "Arn": org_accounts[1]["Arn"],
+            "Email": org_accounts[1]["Email"],
+            "Name": org_accounts[1]["Name"],
             "Status": "ACTIVE",
             "AssumeRoleSuccess": True,
             "RoleName": "OrganizationAccountAccessRole",
@@ -56,7 +39,7 @@ def test_decorated_simple_func(patch_boto3_client: MagicMock) -> None:
     assert cove_output["Results"] == expected
 
 
-def test_decorated_func_passed_arg(patch_boto3_client: MagicMock) -> None:
+def test_decorated_func_passed_arg(org_accounts: List[AccountTypeDef]) -> None:
     @cove
     def simple_func(session: CoveSession, output: str) -> str:
         return output
@@ -64,10 +47,10 @@ def test_decorated_func_passed_arg(patch_boto3_client: MagicMock) -> None:
     cove_output = simple_func("blue")
     expected = [
         {
-            "Id": "12345689012",
-            "Arn": "hello-arn",
-            "Email": "email@address.com",
-            "Name": "an-account-name",
+            "Id": org_accounts[1]["Id"],
+            "Arn": org_accounts[1]["Arn"],
+            "Email": org_accounts[1]["Email"],
+            "Name": org_accounts[1]["Name"],
             "Status": "ACTIVE",
             "AssumeRoleSuccess": True,
             "RoleName": "OrganizationAccountAccessRole",
@@ -78,7 +61,9 @@ def test_decorated_func_passed_arg(patch_boto3_client: MagicMock) -> None:
     assert cove_output["Results"] == expected
 
 
-def test_decorated_func_passed_arg_and_kwarg(patch_boto3_client: MagicMock) -> None:
+def test_decorated_func_passed_arg_and_kwarg(
+    org_accounts: List[AccountTypeDef],
+) -> None:
     @cove
     def simple_func(
         session: CoveSession, time: str, colour: str, shape: str
@@ -89,10 +74,10 @@ def test_decorated_func_passed_arg_and_kwarg(patch_boto3_client: MagicMock) -> N
     # Call with an arg and two kwargs
     expected = [
         {
-            "Id": "12345689012",
-            "Arn": "hello-arn",
-            "Email": "email@address.com",
-            "Name": "an-account-name",
+            "Id": org_accounts[1]["Id"],
+            "Arn": org_accounts[1]["Arn"],
+            "Email": org_accounts[1]["Email"],
+            "Name": org_accounts[1]["Name"],
             "Status": "ACTIVE",
             "AssumeRoleSuccess": True,
             "RoleName": "OrganizationAccountAccessRole",
@@ -100,5 +85,4 @@ def test_decorated_func_passed_arg_and_kwarg(patch_boto3_client: MagicMock) -> N
             "Result": ("blue", "circle", "11:11"),
         }
     ]
-    # Two simple_func calls == two mock AWS accounts
     assert cove_output == expected
