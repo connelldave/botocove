@@ -178,7 +178,7 @@ A policy document that will be used as a session policy in each Cove session's
 `sts.assume_role()` call. Unless the value is None, it is passed through via the
 Policy parameter.
 
-`policy_arns`: List[str]
+`policy_arns`: List[[PolicyDescriptorTypeTypeDef](https://pypi.org/project/mypy-boto3-sts/)]
 
 A list of managed policy ARNs that will be used as a session policy in each Cove
 session's `sts.assume_role()` call. Unless the value is None, it is passed
