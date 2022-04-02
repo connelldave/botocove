@@ -3,6 +3,7 @@ from typing import List, Optional
 import pytest
 from boto3 import Session
 from mypy_boto3_organizations.type_defs import AccountTypeDef
+from mypy_boto3_sts.type_defs import PolicyDescriptorTypeTypeDef
 
 from botocove import CoveSession, cove
 
@@ -127,14 +128,18 @@ def test_decorated_simple_func_passed_policy(mock_session: Session) -> None:
 
 @pytest.mark.usefixtures("org_accounts")
 def test_decorated_simple_func_passed_policy_arn(mock_session: Session) -> None:
-    session_policy_arns = ["arn:aws:iam::aws:policy/IAMReadOnlyAccess"]
+    session_policy_arns: List[PolicyDescriptorTypeTypeDef] = [
+        {"arn": "arn:aws:iam::aws:policy/IAMReadOnlyAccess"}
+    ]
 
     @cove(
         assuming_session=mock_session,
         policy_arns=session_policy_arns,
         org_master=False,
     )
-    def simple_func(session: CoveSession) -> Optional[List[str]]:
+    def simple_func(
+        session: CoveSession,
+    ) -> Optional[List[PolicyDescriptorTypeTypeDef]]:
         return session.session_information["PolicyArns"]
 
     cove_output = simple_func()

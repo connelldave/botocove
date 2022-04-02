@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional, TypedDict
 
 from mypy_boto3_organizations.literals import AccountStatusType
+from mypy_boto3_sts.type_defs import PolicyDescriptorTypeTypeDef
 
 
 class CoveSessionInformation(TypedDict):
@@ -13,7 +14,7 @@ class CoveSessionInformation(TypedDict):
     Status: Optional[AccountStatusType]
     RoleSessionName: Optional[str]
     Policy: Optional[str]
-    PolicyArns: Optional[List[str]]
+    PolicyArns: Optional[List[PolicyDescriptorTypeTypeDef]]
     Result: Any
     ExceptionDetails: Optional[Exception]
     Region: Optional[str]
