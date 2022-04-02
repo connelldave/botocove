@@ -1,7 +1,7 @@
-from datetime import datetime
 from typing import List
-from unittest.mock import MagicMock
 
+import botocore
+import botocore.client
 import pytest
 from boto3 import Session
 from botocore.exceptions import ClientError
@@ -20,30 +20,6 @@ def org_accounts(mock_session: Session) -> List[AccountTypeDef]:
     org.create_organization(FeatureSet="ALL")
     org.create_account(Email="email@address.com", AccountName="an-account-name")
     return org.list_accounts()["Accounts"]
-
-
-@pytest.fixture()
-def patch_boto3_client(mocker: MockerFixture) -> MagicMock:
-    mock_boto3 = mocker.patch("botocove.cove_host_account.boto3")
-    list_accounts_result = {"Accounts": [{"Id": "12345689012", "Status": "ACTIVE"}]}
-    mock_boto3.client.return_value.get_paginator.return_value.paginate.return_value.build_full_result.return_value = (  # noqa E501
-        list_accounts_result
-    )
-    describe_account_result = {
-        "Account": {
-            "Id": "1234",
-            "Arn": "hello-arn",
-            "Email": "email@address.com",
-            "Name": "an-account-name",
-            "Status": "ACTIVE",
-            "JoinedMethod": "CREATED",
-            "JoinedTimestamp": datetime(2015, 1, 1),
-        }
-    }
-    mock_boto3.client.return_value.describe_account.return_value = (
-        describe_account_result
-    )
-    return mock_boto3
 
 
 @pytest.mark.usefixtures("mock_session")
@@ -130,23 +106,38 @@ def test_session_result_formatter_with_policy_arn(
     assert cove_output["Results"] == expected
 
 
-def test_session_result_error_handler(patch_boto3_client: MagicMock) -> None:
-    # Raise an exception instead of an expected response from boto3
-    patch_boto3_client.client.return_value.describe_account.side_effect = MagicMock(
-        side_effect=ClientError(
-            {"Error": {"Message": "broken!", "Code": "OhNo"}}, "describe_account"
+@pytest.mark.usefixtures("mock_session")
+def test_session_result_error_handler(
+    org_accounts: List[AccountTypeDef], mocker: MockerFixture
+) -> None:
+    # Raise an exception instead of an expected response from boto3.
+    # See "How to test ClientError with moto?".
+    # https://github.com/spulec/moto/issues/4453
+    _make_api_call = (
+        botocore.client.BaseClient._make_api_call  # type: ignore[attr-defined]
+    )
+
+    def fail_on_describe_account(  # type: ignore[no-untyped-def]
+        self, operation_name, api_params
+    ):
+        if operation_name != "DescribeAccount":
+            return _make_api_call(self, operation_name, api_params)
+        raise ClientError(
+            {"Error": {"Message": "broken!", "Code": "OhNo"}}, operation_name
         )
+
+    mocker.patch(
+        "botocore.client.BaseClient._make_api_call", new=fail_on_describe_account
     )
 
     @cove()
     def simple_func(session: CoveSession, a_string: str) -> str:
         return a_string
 
-    # Only one account for simplicity
     cove_output = simple_func("test-string")
     expected = [
         {
-            "Id": "12345689012",
+            "Id": org_accounts[1]["Id"],
             "AssumeRoleSuccess": True,
             "Result": "test-string",
             "RoleName": "OrganizationAccountAccessRole",
