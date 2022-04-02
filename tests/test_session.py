@@ -1,11 +1,24 @@
 from datetime import datetime
+from typing import List, cast
 from unittest.mock import MagicMock
 
 import pytest
+from boto3 import Session
 from botocore.exceptions import ClientError
+from mypy_boto3_organizations.type_defs import AccountTypeDef
 from pytest_mock import MockerFixture
 
 from botocove import CoveSession, cove
+
+
+@pytest.fixture()
+def org_accounts(mock_session: Session) -> List[AccountTypeDef]:
+    """Returns a list of the accounts in the mock org. Index 0 is the management
+    account."""
+    org = mock_session.client("organizations")
+    org.create_organization(FeatureSet="ALL")
+    org.create_account(Email="email@address.com", AccountName="an-account-name")
+    return org.list_accounts()["Accounts"]
 
 
 @pytest.fixture()
@@ -32,7 +45,8 @@ def patch_boto3_client(mocker: MockerFixture) -> MagicMock:
     return mock_boto3
 
 
-def test_session_result_formatter(patch_boto3_client: MagicMock) -> None:
+@pytest.mark.usefixtures("mock_session")
+def test_session_result_formatter(org_accounts: List[AccountTypeDef]) -> None:
     @cove
     def simple_func(session: CoveSession, a_string: str) -> str:
         return a_string
@@ -41,10 +55,10 @@ def test_session_result_formatter(patch_boto3_client: MagicMock) -> None:
     cove_output = simple_func("test-string")
     expected = [
         {
-            "Id": "12345689012",
-            "Arn": "hello-arn",
-            "Email": "email@address.com",
-            "Name": "an-account-name",
+            "Id": org_accounts[1]["Id"],
+            "Arn": org_accounts[1]["Arn"],
+            "Email": org_accounts[1]["Email"],
+            "Name": org_accounts[1]["Name"],
             "Status": "ACTIVE",
             "AssumeRoleSuccess": True,
             "Result": "test-string",
@@ -55,7 +69,10 @@ def test_session_result_formatter(patch_boto3_client: MagicMock) -> None:
     assert cove_output["Results"] == expected
 
 
-def test_session_result_formatter_with_policy(patch_boto3_client: MagicMock) -> None:
+@pytest.mark.usefixtures("mock_session")
+def test_session_result_formatter_with_policy(
+    org_accounts: List[AccountTypeDef],
+) -> None:
     session_policy = '{"Version":"2012-10-17","Statement":[{"Effect":"Deny","Action":"*","Resource":"*"}]}'  # noqa: E501
 
     @cove(policy=session_policy)
@@ -66,10 +83,10 @@ def test_session_result_formatter_with_policy(patch_boto3_client: MagicMock) -> 
     cove_output = simple_func("test-string")
     expected = [
         {
-            "Id": "12345689012",
-            "Arn": "hello-arn",
-            "Email": "email@address.com",
-            "Name": "an-account-name",
+            "Id": org_accounts[1]["Id"],
+            "Arn": org_accounts[1]["Arn"],
+            "Email": org_accounts[1]["Email"],
+            "Name": org_accounts[1]["Name"],
             "Status": "ACTIVE",
             "AssumeRoleSuccess": True,
             "Result": "test-string",
@@ -81,10 +98,13 @@ def test_session_result_formatter_with_policy(patch_boto3_client: MagicMock) -> 
     assert cove_output["Results"] == expected
 
 
+@pytest.mark.usefixtures("mock_session")
 def test_session_result_formatter_with_policy_arn(
-    patch_boto3_client: MagicMock,
+    org_accounts: List[AccountTypeDef],
 ) -> None:
-    session_policy_arns = ["arn:aws:iam::aws:policy/IAMReadOnlyAccess"]
+    session_policy_arns = cast(
+        List[str], [{"arn": "arn:aws:iam::aws:policy/IAMReadOnlyAccess"}]
+    )
 
     @cove(policy_arns=session_policy_arns)
     def simple_func(session: CoveSession, a_string: str) -> str:
@@ -94,10 +114,10 @@ def test_session_result_formatter_with_policy_arn(
     cove_output = simple_func("test-string")
     expected = [
         {
-            "Id": "12345689012",
-            "Arn": "hello-arn",
-            "Email": "email@address.com",
-            "Name": "an-account-name",
+            "Id": org_accounts[1]["Id"],
+            "Arn": org_accounts[1]["Arn"],
+            "Email": org_accounts[1]["Email"],
+            "Name": org_accounts[1]["Name"],
             "Status": "ACTIVE",
             "AssumeRoleSuccess": True,
             "Result": "test-string",
