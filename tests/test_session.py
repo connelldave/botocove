@@ -1,7 +1,5 @@
-from typing import List
+from typing import Any, List
 
-import botocore
-import botocore.client
 import pytest
 from boto3 import Session
 from botocore.exceptions import ClientError
@@ -110,24 +108,14 @@ def test_session_result_formatter_with_policy_arn(
 def test_session_result_error_handler(
     org_accounts: List[AccountTypeDef], mocker: MockerFixture
 ) -> None:
-    # Raise an exception instead of an expected response from boto3.
-    # See "How to test ClientError with moto?".
-    # https://github.com/spulec/moto/issues/4453
-    _make_api_call = (
-        botocore.client.BaseClient._make_api_call  # type: ignore[attr-defined]
-    )
-
-    def fail_on_describe_account(  # type: ignore[no-untyped-def]
-        self, operation_name, api_params
-    ):
-        if operation_name != "DescribeAccount":
-            return _make_api_call(self, operation_name, api_params)
+    def describe_account(*args: Any, **kwargs: Any) -> None:
         raise ClientError(
-            {"Error": {"Message": "broken!", "Code": "OhNo"}}, operation_name
+            {"Error": {"Message": "broken!", "Code": "OhNo"}}, "describe_account"
         )
 
     mocker.patch(
-        "botocore.client.BaseClient._make_api_call", new=fail_on_describe_account
+        "moto.organizations.models.OrganizationsBackend.describe_account",
+        describe_account,
     )
 
     @cove()
