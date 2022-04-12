@@ -20,7 +20,6 @@ def org_accounts(mock_session: Session) -> List[AccountTypeDef]:
     return org.list_accounts()["Accounts"]
 
 
-@pytest.mark.usefixtures("mock_session")
 def test_session_result_formatter(org_accounts: List[AccountTypeDef]) -> None:
     @cove
     def simple_func(session: CoveSession, a_string: str) -> str:
@@ -44,7 +43,6 @@ def test_session_result_formatter(org_accounts: List[AccountTypeDef]) -> None:
     assert cove_output["Results"] == expected
 
 
-@pytest.mark.usefixtures("mock_session")
 def test_session_result_formatter_with_policy(
     org_accounts: List[AccountTypeDef],
 ) -> None:
@@ -73,7 +71,6 @@ def test_session_result_formatter_with_policy(
     assert cove_output["Results"] == expected
 
 
-@pytest.mark.usefixtures("mock_session")
 def test_session_result_formatter_with_policy_arn(
     org_accounts: List[AccountTypeDef],
 ) -> None:
@@ -104,7 +101,6 @@ def test_session_result_formatter_with_policy_arn(
     assert cove_output["Results"] == expected
 
 
-@pytest.mark.usefixtures("mock_session")
 def test_session_result_error_handler(
     org_accounts: List[AccountTypeDef], mocker: MockerFixture
 ) -> None:

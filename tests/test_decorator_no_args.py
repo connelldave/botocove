@@ -17,7 +17,6 @@ def org_accounts(mock_session: Session) -> List[AccountTypeDef]:
     return org.list_accounts()["Accounts"]
 
 
-@pytest.mark.usefixtures("mock_session")
 def test_decorated_simple_func(org_accounts: List[AccountTypeDef]) -> None:
     @cove
     def simple_func(session: CoveSession) -> str:
@@ -40,7 +39,6 @@ def test_decorated_simple_func(org_accounts: List[AccountTypeDef]) -> None:
     assert cove_output["Results"] == expected
 
 
-@pytest.mark.usefixtures("mock_session")
 def test_decorated_func_passed_arg(org_accounts: List[AccountTypeDef]) -> None:
     @cove
     def simple_func(session: CoveSession, output: str) -> str:
@@ -63,7 +61,6 @@ def test_decorated_func_passed_arg(org_accounts: List[AccountTypeDef]) -> None:
     assert cove_output["Results"] == expected
 
 
-@pytest.mark.usefixtures("mock_session")
 def test_decorated_func_passed_arg_and_kwarg(
     org_accounts: List[AccountTypeDef],
 ) -> None:

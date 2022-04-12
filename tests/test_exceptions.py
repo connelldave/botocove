@@ -98,8 +98,9 @@ def test_malformed_ignore_ids(
         simple_func()
 
 
-@pytest.mark.usefixtures("org_accounts")
-def test_malformed_ignore_ids_type(mock_session: Session) -> None:
+def test_malformed_ignore_ids_type(
+    mock_session: Session, org_accounts: List[AccountTypeDef]
+) -> None:
     @cove(
         assuming_session=mock_session,
         target_ids=None,

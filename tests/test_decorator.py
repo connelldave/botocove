@@ -19,8 +19,9 @@ def org_accounts(mock_session: Session) -> List[AccountTypeDef]:
     return org.list_accounts()["Accounts"]
 
 
-@pytest.mark.usefixtures("org_accounts")
-def test_decorated_simple_func(mock_session: Session) -> None:
+def test_decorated_simple_func(
+    mock_session: Session, org_accounts: List[AccountTypeDef]
+) -> None:
     @cove(assuming_session=mock_session)
     def simple_func(session: CoveSession) -> str:
         return "hello"
@@ -90,8 +91,9 @@ def test_decorated_simple_func_passed_args(
     assert cove_output["Results"] == expected
 
 
-@pytest.mark.usefixtures("org_accounts")
-def test_decorated_simple_func_passed_session_name(mock_session: Session) -> None:
+def test_decorated_simple_func_passed_session_name(
+    mock_session: Session, org_accounts: List[AccountTypeDef]
+) -> None:
     session_name = "testSessionName"
 
     @cove(
@@ -108,8 +110,9 @@ def test_decorated_simple_func_passed_session_name(mock_session: Session) -> Non
     assert all(x["Result"] == session_name for x in cove_output["Results"])
 
 
-@pytest.mark.usefixtures("org_accounts")
-def test_decorated_simple_func_passed_policy(mock_session: Session) -> None:
+def test_decorated_simple_func_passed_policy(
+    mock_session: Session, org_accounts: List[AccountTypeDef]
+) -> None:
     session_policy = '{"Version":"2012-10-17","Statement":[{"Effect":"Deny","Action":"*","Resource":"*"}]}'  # noqa: E501
 
     @cove(
@@ -126,8 +129,9 @@ def test_decorated_simple_func_passed_policy(mock_session: Session) -> None:
     assert all(x["Result"] == session_policy for x in cove_output["Results"])
 
 
-@pytest.mark.usefixtures("org_accounts")
-def test_decorated_simple_func_passed_policy_arn(mock_session: Session) -> None:
+def test_decorated_simple_func_passed_policy_arn(
+    mock_session: Session, org_accounts: List[AccountTypeDef]
+) -> None:
     session_policy_arns: List[PolicyDescriptorTypeTypeDef] = [
         {"arn": "arn:aws:iam::aws:policy/IAMReadOnlyAccess"}
     ]
