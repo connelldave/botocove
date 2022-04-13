@@ -174,15 +174,15 @@ An IAM role session name that will be passed to each Cove session's
 
 `policy`: str
 
-A policy document that will be used as a session policy in each Cove session's
-`sts.assume_role()` call. Unless the value is None, it is passed through via the
-Policy parameter.
+A policy document that will be used as a session policy. A non-None value is
+passed through via the Policy parameter in each Cove session's
+`sts.assume_role()` call.
 
-`policy_arns`: List[str]
+`policy_arns`: List[[PolicyDescriptorTypeTypeDef](https://pypi.org/project/mypy-boto3-sts/)]
 
-A list of managed policy ARNs that will be used as a session policy in each Cove
-session's `sts.assume_role()` call. Unless the value is None, it is passed
-through via the PolicyArns parameter.
+A list of managed policy ARNs that will be used as a session policy. A non-None
+value is passed through via the PolicyArns parameter in each Cove session's
+`sts.assume_role()` call.
 
 `assuming_session`: Session
 

@@ -20,6 +20,7 @@ from botocore.config import Config
 from mypy_boto3_organizations.client import OrganizationsClient
 from mypy_boto3_organizations.type_defs import ListChildrenResponseTypeDef
 from mypy_boto3_sts.client import STSClient
+from mypy_boto3_sts.type_defs import PolicyDescriptorTypeTypeDef
 
 from botocove.cove_types import CoveSessionInformation
 
@@ -39,7 +40,7 @@ class CoveHostAccount(object):
         rolename: Optional[str],
         role_session_name: Optional[str],
         policy: Optional[str],
-        policy_arns: Optional[List[str]],
+        policy_arns: Optional[List[PolicyDescriptorTypeTypeDef]],
         assuming_session: Optional[Session],
         org_master: bool,
         thread_workers: int,

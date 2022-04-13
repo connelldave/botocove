@@ -1,60 +1,31 @@
-from datetime import datetime
-from unittest.mock import MagicMock
+from typing import List
 
 import pytest
+from boto3 import Session
+from mypy_boto3_organizations.type_defs import AccountTypeDef
 
 from botocove import cove
 from botocove.cove_session import CoveSession
 
 
 @pytest.fixture()
-def mock_boto3_session() -> MagicMock:
-    mock_session = MagicMock()
-    list_accounts_result = {
-        "Accounts": [
-            {"Id": "123123123123", "Status": "ACTIVE"},
-            {"Id": "123123123123", "Status": "ACTIVE"},
-        ]
-    }
-    mock_session.client.return_value.get_paginator.return_value.paginate.return_value.build_full_result.return_value = (  # noqa E501
-        list_accounts_result
-    )
-    describe_account_results = [
-        {
-            "Account": {
-                "Id": "123123123123",
-                "Arn": "hello-arn",
-                "Email": "email@address.com",
-                "Name": "an-account-name",
-                "Status": "ACTIVE",
-                "JoinedMethod": "CREATED",
-                "JoinedTimestamp": datetime(2015, 1, 1),
-            }
-        },
-        {
-            "Account": {
-                "Id": "456456456456",
-                "Arn": "hello-arn",
-                "Email": "email@address.com",
-                "Name": "an-account-name",
-                "Status": "ACTIVE",
-                "JoinedMethod": "CREATED",
-                "JoinedTimestamp": datetime(2015, 1, 1),
-            }
-        },
-    ]
-    mock_session.client.return_value.describe_account.side_effect = (
-        describe_account_results
-    )
-    # Mock out the credential requiring API call
-    return mock_session
+def org_accounts(mock_session: Session) -> List[AccountTypeDef]:
+    """Returns a list of the accounts in the mock org. Index 0 is the management
+    account."""
+    org = mock_session.client("organizations")
+    org.create_organization(FeatureSet="ALL")
+    org.create_account(Email="email@address.com", AccountName="an-account-name")
+    org.create_account(Email="email@address.com", AccountName="an-account-name")
+    return org.list_accounts()["Accounts"]
 
 
-def test_no_account_id_exception(mock_boto3_session: MagicMock) -> None:
+def test_no_account_id_exception(
+    mock_session: Session, org_accounts: List[AccountTypeDef]
+) -> None:
     @cove(
-        assuming_session=mock_boto3_session,
-        target_ids=["456456456456"],
-        ignore_ids=["456456456456"],
+        assuming_session=mock_session,
+        target_ids=[org_accounts[1]["Id"]],
+        ignore_ids=[org_accounts[1]["Id"]],
     )
     def simple_func(session: CoveSession) -> str:
         return "hello"
@@ -66,19 +37,21 @@ def test_no_account_id_exception(mock_boto3_session: MagicMock) -> None:
         simple_func()
 
 
-def test_handled_exception_in_wrapped_func(mock_boto3_session: MagicMock) -> None:
-    @cove(assuming_session=mock_boto3_session, target_ids=["456456456456"])
+def test_handled_exception_in_wrapped_func(
+    mock_session: Session, org_accounts: List[AccountTypeDef]
+) -> None:
+    @cove(assuming_session=mock_session, target_ids=[org_accounts[1]["Id"]])
     def simple_func(session: CoveSession) -> None:
         raise Exception("oh no")
 
     results = simple_func()
     expected = {
-        "Id": "456456456456",
+        "Id": org_accounts[1]["Id"],
         "RoleName": "OrganizationAccountAccessRole",
         "AssumeRoleSuccess": True,
-        "Arn": "hello-arn",
-        "Email": "email@address.com",
-        "Name": "an-account-name",
+        "Arn": org_accounts[1]["Arn"],
+        "Email": org_accounts[1]["Email"],
+        "Name": org_accounts[1]["Name"],
         "Status": "ACTIVE",
         "RoleSessionName": "OrganizationAccountAccessRole",
         "ExceptionDetails": repr(Exception("oh no")),
@@ -92,10 +65,12 @@ def test_handled_exception_in_wrapped_func(mock_boto3_session: MagicMock) -> Non
     assert results["Exceptions"][0] == expected
 
 
-def test_raised_exception_in_wrapped_func(mock_boto3_session: MagicMock) -> None:
+def test_raised_exception_in_wrapped_func(
+    mock_session: Session, org_accounts: List[AccountTypeDef]
+) -> None:
     @cove(
-        assuming_session=mock_boto3_session,
-        target_ids=["456456456456"],
+        assuming_session=mock_session,
+        target_ids=[org_accounts[1]["Id"]],
         raise_exception=True,
     )
     def simple_func(session: CoveSession) -> None:
@@ -105,10 +80,12 @@ def test_raised_exception_in_wrapped_func(mock_boto3_session: MagicMock) -> None
         simple_func()
 
 
-def test_malformed_ignore_ids(mock_boto3_session: MagicMock) -> None:
+def test_malformed_ignore_ids(
+    mock_session: Session, org_accounts: List[AccountTypeDef]
+) -> None:
     @cove(
-        assuming_session=mock_boto3_session,
-        target_ids=["456456456456"],
+        assuming_session=mock_session,
+        target_ids=[org_accounts[1]["Id"]],
         ignore_ids=["cat"],
     )
     def simple_func(session: CoveSession) -> str:
@@ -121,9 +98,11 @@ def test_malformed_ignore_ids(mock_boto3_session: MagicMock) -> None:
         simple_func()
 
 
-def test_malformed_ignore_ids_type(mock_boto3_session: MagicMock) -> None:
+def test_malformed_ignore_ids_type(
+    mock_session: Session, org_accounts: List[AccountTypeDef]
+) -> None:
     @cove(
-        assuming_session=mock_boto3_session,
+        assuming_session=mock_session,
         target_ids=None,
         ignore_ids=[456456456456],  # type: ignore
     )
@@ -139,11 +118,13 @@ def test_malformed_ignore_ids_type(mock_boto3_session: MagicMock) -> None:
         simple_func()
 
 
-def test_malformed_target_id(mock_boto3_session: MagicMock) -> None:
+def test_malformed_target_id(
+    mock_session: Session, org_accounts: List[AccountTypeDef]
+) -> None:
     @cove(
-        assuming_session=mock_boto3_session,
+        assuming_session=mock_session,
         target_ids=["xu-gzxu-393a2l5b"],
-        ignore_ids=["456456456456"],
+        ignore_ids=[org_accounts[1]["Id"]],
     )
     def simple_func(session: CoveSession) -> str:
         return "hello"
@@ -155,9 +136,9 @@ def test_malformed_target_id(mock_boto3_session: MagicMock) -> None:
         simple_func()
 
 
-def test_malformed_target_id_type(mock_boto3_session: MagicMock) -> None:
+def test_malformed_target_id_type(mock_session: Session) -> None:
     @cove(
-        assuming_session=mock_boto3_session,
+        assuming_session=mock_session,
         target_ids=[456456456456],  # type: ignore
         ignore_ids=[],
     )

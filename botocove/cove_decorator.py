@@ -3,6 +3,7 @@ import logging
 from typing import Any, Callable, List, Optional
 
 from boto3.session import Session
+from mypy_boto3_sts.type_defs import PolicyDescriptorTypeTypeDef
 
 from botocove.cove_host_account import CoveHostAccount
 from botocove.cove_runner import CoveRunner
@@ -19,7 +20,7 @@ def cove(
     rolename: Optional[str] = None,
     role_session_name: Optional[str] = None,
     policy: Optional[str] = None,
-    policy_arns: Optional[List[str]] = None,
+    policy_arns: Optional[List[PolicyDescriptorTypeTypeDef]] = None,
     assuming_session: Optional[Session] = None,
     raise_exception: bool = False,
     org_master: bool = True,

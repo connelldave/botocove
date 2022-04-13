@@ -1,38 +1,26 @@
-from datetime import datetime
-from unittest.mock import MagicMock
+from typing import Any, List
 
 import pytest
+from boto3 import Session
 from botocore.exceptions import ClientError
+from mypy_boto3_organizations.type_defs import AccountTypeDef
+from mypy_boto3_sts.type_defs import PolicyDescriptorTypeTypeDef
 from pytest_mock import MockerFixture
 
 from botocove import CoveSession, cove
 
 
 @pytest.fixture()
-def patch_boto3_client(mocker: MockerFixture) -> MagicMock:
-    mock_boto3 = mocker.patch("botocove.cove_host_account.boto3")
-    list_accounts_result = {"Accounts": [{"Id": "12345689012", "Status": "ACTIVE"}]}
-    mock_boto3.client.return_value.get_paginator.return_value.paginate.return_value.build_full_result.return_value = (  # noqa E501
-        list_accounts_result
-    )
-    describe_account_result = {
-        "Account": {
-            "Id": "1234",
-            "Arn": "hello-arn",
-            "Email": "email@address.com",
-            "Name": "an-account-name",
-            "Status": "ACTIVE",
-            "JoinedMethod": "CREATED",
-            "JoinedTimestamp": datetime(2015, 1, 1),
-        }
-    }
-    mock_boto3.client.return_value.describe_account.return_value = (
-        describe_account_result
-    )
-    return mock_boto3
+def org_accounts(mock_session: Session) -> List[AccountTypeDef]:
+    """Returns a list of the accounts in the mock org. Index 0 is the management
+    account."""
+    org = mock_session.client("organizations")
+    org.create_organization(FeatureSet="ALL")
+    org.create_account(Email="email@address.com", AccountName="an-account-name")
+    return org.list_accounts()["Accounts"]
 
 
-def test_session_result_formatter(patch_boto3_client: MagicMock) -> None:
+def test_session_result_formatter(org_accounts: List[AccountTypeDef]) -> None:
     @cove
     def simple_func(session: CoveSession, a_string: str) -> str:
         return a_string
@@ -41,10 +29,10 @@ def test_session_result_formatter(patch_boto3_client: MagicMock) -> None:
     cove_output = simple_func("test-string")
     expected = [
         {
-            "Id": "12345689012",
-            "Arn": "hello-arn",
-            "Email": "email@address.com",
-            "Name": "an-account-name",
+            "Id": org_accounts[1]["Id"],
+            "Arn": org_accounts[1]["Arn"],
+            "Email": org_accounts[1]["Email"],
+            "Name": org_accounts[1]["Name"],
             "Status": "ACTIVE",
             "AssumeRoleSuccess": True,
             "Result": "test-string",
@@ -55,7 +43,9 @@ def test_session_result_formatter(patch_boto3_client: MagicMock) -> None:
     assert cove_output["Results"] == expected
 
 
-def test_session_result_formatter_with_policy(patch_boto3_client: MagicMock) -> None:
+def test_session_result_formatter_with_policy(
+    org_accounts: List[AccountTypeDef],
+) -> None:
     session_policy = '{"Version":"2012-10-17","Statement":[{"Effect":"Deny","Action":"*","Resource":"*"}]}'  # noqa: E501
 
     @cove(policy=session_policy)
@@ -66,10 +56,10 @@ def test_session_result_formatter_with_policy(patch_boto3_client: MagicMock) -> 
     cove_output = simple_func("test-string")
     expected = [
         {
-            "Id": "12345689012",
-            "Arn": "hello-arn",
-            "Email": "email@address.com",
-            "Name": "an-account-name",
+            "Id": org_accounts[1]["Id"],
+            "Arn": org_accounts[1]["Arn"],
+            "Email": org_accounts[1]["Email"],
+            "Name": org_accounts[1]["Name"],
             "Status": "ACTIVE",
             "AssumeRoleSuccess": True,
             "Result": "test-string",
@@ -82,9 +72,11 @@ def test_session_result_formatter_with_policy(patch_boto3_client: MagicMock) -> 
 
 
 def test_session_result_formatter_with_policy_arn(
-    patch_boto3_client: MagicMock,
+    org_accounts: List[AccountTypeDef],
 ) -> None:
-    session_policy_arns = ["arn:aws:iam::aws:policy/IAMReadOnlyAccess"]
+    session_policy_arns: List[PolicyDescriptorTypeTypeDef] = [
+        {"arn": "arn:aws:iam::aws:policy/IAMReadOnlyAccess"}
+    ]
 
     @cove(policy_arns=session_policy_arns)
     def simple_func(session: CoveSession, a_string: str) -> str:
@@ -94,10 +86,10 @@ def test_session_result_formatter_with_policy_arn(
     cove_output = simple_func("test-string")
     expected = [
         {
-            "Id": "12345689012",
-            "Arn": "hello-arn",
-            "Email": "email@address.com",
-            "Name": "an-account-name",
+            "Id": org_accounts[1]["Id"],
+            "Arn": org_accounts[1]["Arn"],
+            "Email": org_accounts[1]["Email"],
+            "Name": org_accounts[1]["Name"],
             "Status": "ACTIVE",
             "AssumeRoleSuccess": True,
             "Result": "test-string",
@@ -109,23 +101,27 @@ def test_session_result_formatter_with_policy_arn(
     assert cove_output["Results"] == expected
 
 
-def test_session_result_error_handler(patch_boto3_client: MagicMock) -> None:
-    # Raise an exception instead of an expected response from boto3
-    patch_boto3_client.client.return_value.describe_account.side_effect = MagicMock(
-        side_effect=ClientError(
+def test_session_result_error_handler(
+    org_accounts: List[AccountTypeDef], mocker: MockerFixture
+) -> None:
+    def describe_account(*args: Any, **kwargs: Any) -> None:
+        raise ClientError(
             {"Error": {"Message": "broken!", "Code": "OhNo"}}, "describe_account"
         )
+
+    mocker.patch(
+        "moto.organizations.models.OrganizationsBackend.describe_account",
+        describe_account,
     )
 
     @cove()
     def simple_func(session: CoveSession, a_string: str) -> str:
         return a_string
 
-    # Only one account for simplicity
     cove_output = simple_func("test-string")
     expected = [
         {
-            "Id": "12345689012",
+            "Id": org_accounts[1]["Id"],
             "AssumeRoleSuccess": True,
             "Result": "test-string",
             "RoleName": "OrganizationAccountAccessRole",

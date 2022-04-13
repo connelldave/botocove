@@ -1,56 +1,28 @@
-from datetime import datetime
 from typing import List, Optional
-from unittest.mock import MagicMock
 
 import pytest
+from boto3 import Session
+from mypy_boto3_organizations.type_defs import AccountTypeDef
+from mypy_boto3_sts.type_defs import PolicyDescriptorTypeTypeDef
 
 from botocove import CoveSession, cove
 
 
 @pytest.fixture()
-def mock_boto3_session() -> MagicMock:
-    mock_session = MagicMock()
-    list_accounts_result = {
-        "Accounts": [
-            {"Id": "123123123123", "Status": "ACTIVE"},
-            {"Id": "456456456456", "Status": "ACTIVE"},
-        ]
-    }
-    mock_session.client.return_value.get_paginator.return_value.paginate.return_value.build_full_result.return_value = (  # noqa E501
-        list_accounts_result
-    )
-    describe_account_results = [
-        {
-            "Account": {
-                "Id": "123123123123",
-                "Arn": "hello-arn",
-                "Email": "email@address.com",
-                "Name": "an-account-name",
-                "Status": "ACTIVE",
-                "JoinedMethod": "CREATED",
-                "JoinedTimestamp": datetime(2015, 1, 1),
-            }
-        },
-        {
-            "Account": {
-                "Id": "456456456456",
-                "Arn": "hello-arn",
-                "Email": "email@address.com",
-                "Name": "an-account-name",
-                "Status": "ACTIVE",
-                "JoinedMethod": "CREATED",
-                "JoinedTimestamp": datetime(2015, 1, 1),
-            }
-        },
-    ]
-    mock_session.client.return_value.describe_account.side_effect = (
-        describe_account_results
-    )
-    return mock_session
+def org_accounts(mock_session: Session) -> List[AccountTypeDef]:
+    """Returns a list of the accounts in the mock org. Index 0 is the management
+    account."""
+    org = mock_session.client("organizations")
+    org.create_organization(FeatureSet="ALL")
+    org.create_account(Email="email@address.com", AccountName="an-account-name")
+    org.create_account(Email="email@address.com", AccountName="an-account-name")
+    return org.list_accounts()["Accounts"]
 
 
-def test_decorated_simple_func(mock_boto3_session: MagicMock) -> None:
-    @cove(assuming_session=mock_boto3_session)
+def test_decorated_simple_func(
+    mock_session: Session, org_accounts: List[AccountTypeDef]
+) -> None:
+    @cove(assuming_session=mock_session)
     def simple_func(session: CoveSession) -> str:
         return "hello"
 
@@ -59,11 +31,13 @@ def test_decorated_simple_func(mock_boto3_session: MagicMock) -> None:
     assert len(cove_output["Results"]) == 2
 
 
-def test_target_and_ignore_ids(mock_boto3_session: MagicMock) -> None:
+def test_target_and_ignore_ids(
+    mock_session: Session, org_accounts: List[AccountTypeDef]
+) -> None:
     @cove(
-        assuming_session=mock_boto3_session,
-        target_ids=["123123123123", "456456456456"],
-        ignore_ids=["456456456456"],
+        assuming_session=mock_session,
+        target_ids=[org_accounts[1]["Id"], org_accounts[2]["Id"]],
+        ignore_ids=[org_accounts[2]["Id"]],
     )
     def simple_func(session: CoveSession) -> str:
         return "hello"
@@ -74,10 +48,12 @@ def test_target_and_ignore_ids(mock_boto3_session: MagicMock) -> None:
     assert len(cove_output["Results"]) == 1
 
 
-def test_empty_ignore_ids(mock_boto3_session: MagicMock) -> None:
+def test_empty_ignore_ids(
+    mock_session: Session, org_accounts: List[AccountTypeDef]
+) -> None:
     @cove(
-        assuming_session=mock_boto3_session,
-        target_ids=["123123123123", "456456456456"],
+        assuming_session=mock_session,
+        target_ids=[org_accounts[1]["Id"], org_accounts[2]["Id"]],
         ignore_ids=[],
     )
     def simple_func(session: CoveSession) -> str:
@@ -90,18 +66,20 @@ def test_empty_ignore_ids(mock_boto3_session: MagicMock) -> None:
     assert len(cove_output["Results"]) == 2
 
 
-def test_decorated_simple_func_passed_args(mock_boto3_session: MagicMock) -> None:
-    @cove(assuming_session=mock_boto3_session, ignore_ids=["456456456456"])
+def test_decorated_simple_func_passed_args(
+    mock_session: Session, org_accounts: List[AccountTypeDef]
+) -> None:
+    @cove(assuming_session=mock_session, ignore_ids=[org_accounts[2]["Id"]])
     def simple_func(session: CoveSession, arg1: int, arg2: int, arg3: int) -> int:
         return arg1 + arg2 + arg3
 
     cove_output = simple_func(1, 2, 3)
     expected = [
         {
-            "Id": "123123123123",
-            "Arn": "hello-arn",
-            "Email": "email@address.com",
-            "Name": "an-account-name",
+            "Id": org_accounts[1]["Id"],
+            "Arn": org_accounts[1]["Arn"],
+            "Email": org_accounts[1]["Email"],
+            "Name": org_accounts[1]["Name"],
             "Status": "ACTIVE",
             "AssumeRoleSuccess": True,
             "Result": 6,
@@ -114,12 +92,12 @@ def test_decorated_simple_func_passed_args(mock_boto3_session: MagicMock) -> Non
 
 
 def test_decorated_simple_func_passed_session_name(
-    mock_boto3_session: MagicMock,
+    mock_session: Session, org_accounts: List[AccountTypeDef]
 ) -> None:
     session_name = "testSessionName"
 
     @cove(
-        assuming_session=mock_boto3_session,
+        assuming_session=mock_session,
         role_session_name=session_name,
         org_master=False,
     )
@@ -132,11 +110,13 @@ def test_decorated_simple_func_passed_session_name(
     assert all(x["Result"] == session_name for x in cove_output["Results"])
 
 
-def test_decorated_simple_func_passed_policy(mock_boto3_session: MagicMock) -> None:
+def test_decorated_simple_func_passed_policy(
+    mock_session: Session, org_accounts: List[AccountTypeDef]
+) -> None:
     session_policy = '{"Version":"2012-10-17","Statement":[{"Effect":"Deny","Action":"*","Resource":"*"}]}'  # noqa: E501
 
     @cove(
-        assuming_session=mock_boto3_session,
+        assuming_session=mock_session,
         policy=session_policy,
         org_master=False,
     )
@@ -149,15 +129,21 @@ def test_decorated_simple_func_passed_policy(mock_boto3_session: MagicMock) -> N
     assert all(x["Result"] == session_policy for x in cove_output["Results"])
 
 
-def test_decorated_simple_func_passed_policy_arn(mock_boto3_session: MagicMock) -> None:
-    session_policy_arns = ["arn:aws:iam::aws:policy/IAMReadOnlyAccess"]
+def test_decorated_simple_func_passed_policy_arn(
+    mock_session: Session, org_accounts: List[AccountTypeDef]
+) -> None:
+    session_policy_arns: List[PolicyDescriptorTypeTypeDef] = [
+        {"arn": "arn:aws:iam::aws:policy/IAMReadOnlyAccess"}
+    ]
 
     @cove(
-        assuming_session=mock_boto3_session,
+        assuming_session=mock_session,
         policy_arns=session_policy_arns,
         org_master=False,
     )
-    def simple_func(session: CoveSession) -> Optional[List[str]]:
+    def simple_func(
+        session: CoveSession,
+    ) -> Optional[List[PolicyDescriptorTypeTypeDef]]:
         return session.session_information["PolicyArns"]
 
     cove_output = simple_func()
