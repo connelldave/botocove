@@ -1,5 +1,5 @@
 import logging
-from concurrent import futures
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable
 
 from tqdm import tqdm
@@ -34,10 +34,13 @@ class CoveRunner(object):
 
     def run_cove_function(self) -> CoveFunctionOutput:
         # Run decorated func with all valid sessions
-        with futures.ThreadPoolExecutor(max_workers=self.thread_workers) as executor:
+        with ThreadPoolExecutor(max_workers=self.thread_workers) as executor:
+            jobs = [executor.submit(self.cove_thread, s) for s in self.sessions]
+            outputs = (f.result() for f in as_completed(jobs))
+
             completed: CoveResults = list(
                 tqdm(
-                    executor.map(self.cove_thread, self.sessions),
+                    outputs,
                     total=len(self.sessions),
                     desc="Executing function",
                     colour="#ff69b4",  # hotpink
