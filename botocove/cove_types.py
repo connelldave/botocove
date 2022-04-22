@@ -1,3 +1,4 @@
+from concurrent.futures import Future
 from typing import Any, Dict, List, Optional, TypedDict
 
 from mypy_boto3_organizations.literals import AccountStatusType
@@ -21,6 +22,7 @@ class CoveSessionInformation(TypedDict):
 
 
 CoveResults = List[CoveSessionInformation]
+FutureCoveResults = List["Future[CoveSessionInformation]"]
 
 
 class CoveFunctionOutput(TypedDict):

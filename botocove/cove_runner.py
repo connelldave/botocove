@@ -1,12 +1,17 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
 from tqdm import tqdm
 
 from botocove.cove_host_account import CoveHostAccount
 from botocove.cove_session import CoveSession
-from botocove.cove_types import CoveFunctionOutput, CoveResults, CoveSessionInformation
+from botocove.cove_types import (
+    CoveFunctionOutput,
+    CoveResults,
+    CoveSessionInformation,
+    FutureCoveResults,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,19 +38,31 @@ class CoveRunner(object):
         self.thread_workers = thread_workers
 
     def run_cove_function(self) -> CoveFunctionOutput:
-        # Run decorated func with all valid sessions
-        with ThreadPoolExecutor(max_workers=self.thread_workers) as executor:
-            jobs = [executor.submit(self.cove_thread, s) for s in self.sessions]
-            outputs = (f.result() for f in as_completed(jobs))
+        def submit_decorated_func_with_all_sessions(
+            executor: ThreadPoolExecutor,
+        ) -> FutureCoveResults:
+            return [executor.submit(self.cove_thread, s) for s in self.sessions]
 
+        def iterate_results_in_order_of_completion(
+            jobs: FutureCoveResults,
+        ) -> Iterable[CoveSessionInformation]:
+            for f in as_completed(jobs):
+                yield f.result()
+
+        # The "Submit and Use as Completed" pattern as described in
+        # "ThreadPoolExecutor in Python: The Complete Guide".
+        # https://superfastpython.com/threadpoolexecutor-in-python/#Submit_and_Use_as_Completed
+        with ThreadPoolExecutor(max_workers=self.thread_workers) as executor:
+            futures = submit_decorated_func_with_all_sessions(executor)
             completed: CoveResults = list(
                 tqdm(
-                    outputs,
+                    iterate_results_in_order_of_completion(futures),
                     total=len(self.sessions),
                     desc="Executing function",
                     colour="#ff69b4",  # hotpink
                 )
             )
+
         successful_results = [
             result for result in completed if not result["ExceptionDetails"]
         ]
