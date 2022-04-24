@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 from botocove.cove_host_account import CoveHostAccount
 from botocove.cove_session import CoveSession
-from botocove.cove_types import CoveFunctionOutput, CoveResults, CoveSessionInformation
+from botocove.cove_types import CoveFunctionOutput, CoveSessionInformation
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class CoveRunner(object):
         # https://superfastpython.com/threadpoolexecutor-in-python/#Submit_and_Use_as_Completed
         with ThreadPoolExecutor(max_workers=self.thread_workers) as executor:
             futures = [executor.submit(self.cove_thread, s) for s in self.sessions]
-            completed: CoveResults = list(
+            completed: List[CoveSessionInformation] = list(
                 tqdm(
                     _iterate_results_in_order_of_completion(futures),
                     total=len(self.sessions),
