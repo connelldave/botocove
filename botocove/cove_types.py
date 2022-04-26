@@ -20,12 +20,9 @@ class CoveSessionInformation(TypedDict):
     Region: Optional[str]
 
 
-CoveResults = List[CoveSessionInformation]
-
-
 class CoveFunctionOutput(TypedDict):
-    Results: CoveResults
-    Exceptions: CoveResults
+    Results: List[CoveSessionInformation]
+    Exceptions: List[CoveSessionInformation]
 
 
 class CoveOutput(TypedDict):

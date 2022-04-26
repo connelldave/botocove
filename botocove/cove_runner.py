@@ -1,12 +1,12 @@
 import logging
-from concurrent import futures
-from typing import Any, Callable
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
+from typing import Any, Callable, Iterable, List
 
 from tqdm import tqdm
 
 from botocove.cove_host_account import CoveHostAccount
 from botocove.cove_session import CoveSession
-from botocove.cove_types import CoveFunctionOutput, CoveResults, CoveSessionInformation
+from botocove.cove_types import CoveFunctionOutput, CoveSessionInformation
 
 logger = logging.getLogger(__name__)
 
@@ -33,16 +33,23 @@ class CoveRunner(object):
         self.thread_workers = thread_workers
 
     def run_cove_function(self) -> CoveFunctionOutput:
-        # Run decorated func with all valid sessions
-        with futures.ThreadPoolExecutor(max_workers=self.thread_workers) as executor:
-            completed: CoveResults = list(
+
+        # The "Submit and Use as Completed" pattern as described in
+        # "ThreadPoolExecutor in Python: The Complete Guide".
+        # https://superfastpython.com/threadpoolexecutor-in-python/#Submit_and_Use_as_Completed
+        with ThreadPoolExecutor(max_workers=self.thread_workers) as executor:
+            futures: List["Future[CoveSessionInformation]"] = [
+                executor.submit(self.cove_thread, s) for s in self.sessions
+            ]
+            completed: List[CoveSessionInformation] = list(
                 tqdm(
-                    executor.map(self.cove_thread, self.sessions),
+                    _iterate_results_in_order_of_completion(futures),
                     total=len(self.sessions),
                     desc="Executing function",
                     colour="#ff69b4",  # hotpink
                 )
             )
+
         successful_results = [
             result for result in completed if not result["ExceptionDetails"]
         ]
@@ -78,3 +85,10 @@ class CoveRunner(object):
                 raise
             else:
                 return cove_session.format_cove_error(e)
+
+
+def _iterate_results_in_order_of_completion(
+    jobs: List["Future[CoveSessionInformation]"],
+) -> Iterable[CoveSessionInformation]:
+    for f in as_completed(jobs):
+        yield f.result()
