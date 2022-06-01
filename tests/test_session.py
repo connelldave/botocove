@@ -1,11 +1,9 @@
-from typing import Any, List
+from typing import List
 
 import pytest
 from boto3 import Session
-from botocore.exceptions import ClientError
 from mypy_boto3_organizations.type_defs import AccountTypeDef
 from mypy_boto3_sts.type_defs import PolicyDescriptorTypeTypeDef
-from pytest_mock import MockerFixture
 
 from botocove import CoveSession, cove
 
@@ -96,36 +94,6 @@ def test_session_result_formatter_with_policy_arn(
             "RoleName": "OrganizationAccountAccessRole",
             "RoleSessionName": "OrganizationAccountAccessRole",
             "PolicyArns": session_policy_arns,
-        }
-    ]
-    assert cove_output["Results"] == expected
-
-
-def test_session_result_error_handler(
-    org_accounts: List[AccountTypeDef], mocker: MockerFixture
-) -> None:
-    def describe_account(*args: Any, **kwargs: Any) -> None:
-        raise ClientError(
-            {"Error": {"Message": "broken!", "Code": "OhNo"}}, "describe_account"
-        )
-
-    mocker.patch(
-        "moto.organizations.models.OrganizationsBackend.describe_account",
-        describe_account,
-    )
-
-    @cove()
-    def simple_func(session: CoveSession, a_string: str) -> str:
-        return a_string
-
-    cove_output = simple_func("test-string")
-    expected = [
-        {
-            "Id": org_accounts[1]["Id"],
-            "AssumeRoleSuccess": True,
-            "Result": "test-string",
-            "RoleName": "OrganizationAccountAccessRole",
-            "RoleSessionName": "OrganizationAccountAccessRole",
         }
     ]
     assert cove_output["Results"] == expected
