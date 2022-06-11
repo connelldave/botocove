@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+set -euxo pipefail
+
+source make_chart
+export AWS_DEFAULT_REGION="eu-west-1"
+scenario="region_present"
+make_chart $scenario

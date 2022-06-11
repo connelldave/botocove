@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+set -euxo pipefail
+
+source make_chart
+unset AWS_DEFAULT_REGION
+scenario="region_missing"
+make_chart $scenario

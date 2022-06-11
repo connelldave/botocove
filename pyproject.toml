@@ -31,7 +31,10 @@ flake8-print = "*"
 mypy = "*"
 pre-commit = "*"
 flakeheaven = "*"
-moto = {extras = ["organizations", "sts"], version = "*"}
+moto = {extras = ["server"], version = "^3.1.12"}
+memory-profiler = "^0.60.0"
+matplotlib = "^3.5.2"
+Pillow = "^9.1.1"
 
 
 [build-system]

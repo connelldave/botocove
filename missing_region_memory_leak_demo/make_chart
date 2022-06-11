@@ -1,0 +1,18 @@
+make_chart() {
+    scenario="$1"
+
+    timestamp="$(date --utc +%Y%m%d%M%H%S)"
+    profile="${scenario}_${timestamp}_profile.dat"
+    cove_output="${scenario}_${timestamp}_output.txt"
+    chart="${scenario}_${timestamp}_chart.png"
+
+    poetry run mprof run --output "$profile" python leak_demo.py > "$cove_output"
+
+    poetry run mprof plot --slope --output "$chart" --title "$scenario" "$profile"
+
+    poetry run python -c \
+    'import sys; from PIL import Image; Image.open(sys.argv[1]).show()' \
+    "$chart"
+
+    less "$cove_output"
+}
