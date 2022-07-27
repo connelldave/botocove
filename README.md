@@ -26,7 +26,7 @@ arguments to understand safe experimentation with this package.
 
 ## Pre-requisites and Info
 
-An IAM user with `sts:assumerole` privilege, and accounts that have a trust
+An IAM user with `sts:AssumeRole` privilege, and accounts that have a trust
 relationship to the IAM user's account.
 
 By default, the IAM user is expected to be in an AWS Organization Master
@@ -37,10 +37,12 @@ Cove will not execute a function call in the account it's called from.
 
 Default requirements are:
 
-In the organization master account:
+In the organization master account, an identity with at least these permissions:
 
-- IAM permissions `sts:assumerole`, `sts:get-caller-identity` and
-`organizations:list-accounts`
+- `sts:AssumeRole`
+- `organizations:ListAccounts`
+- `organizations:ListOrganizationalUnitsForParent`
+- `organizations:ListAccountsForParent`
 
 In the organization member accounts:
 

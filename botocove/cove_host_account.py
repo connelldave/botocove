@@ -1,24 +1,13 @@
 import logging
 import re
 from functools import lru_cache
-from typing import (
-    Any,
-    Iterable,
-    List,
-    Literal,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-    Union,
-    cast,
-)
+from typing import Any, Dict, Iterable, List, Literal, Optional, Sequence, Set, Union
 
 import boto3
 from boto3.session import Session
 from botocore.config import Config
 from mypy_boto3_organizations.client import OrganizationsClient
-from mypy_boto3_organizations.type_defs import ListChildrenResponseTypeDef
+from mypy_boto3_organizations.type_defs import AccountTypeDef
 from mypy_boto3_sts.client import STSClient
 from mypy_boto3_sts.type_defs import PolicyDescriptorTypeTypeDef
 
@@ -60,7 +49,8 @@ class CoveHostAccount(object):
             self.target_regions = regions
 
         self.provided_ignore_ids = ignore_ids
-        self.target_accounts = self._resolve_target_accounts(target_ids)
+        self.provided_target_ids = target_ids
+        self.target_account_map = self._resolve_target_accounts()
         if not self.target_accounts:
             raise ValueError(
                 "There are no eligible account ids to run decorated func against"
@@ -81,9 +71,9 @@ class CoveHostAccount(object):
 
     def _generate_account_sessions(self) -> Iterable[CoveSessionInformation]:
         for region in self.target_regions:
-            for account_id in self.target_accounts:
+            for account in self.target_account_map.values():
                 account_details: CoveSessionInformation = CoveSessionInformation(
-                    Id=account_id,
+                    Id=account["Id"],
                     RoleName=self.role_to_assume,
                     RoleSessionName=self.role_session_name,
                     Policy=self.policy,
@@ -91,10 +81,10 @@ class CoveHostAccount(object):
                     AssumeRoleSuccess=False,
                     Region=region,
                     ExceptionDetails=None,
-                    Name=None,
-                    Arn=None,
-                    Email=None,
-                    Status=None,
+                    Name=account["Name"],
+                    Arn=account["Arn"],
+                    Email=account["Email"],
+                    Status=account["Status"],
                     Result=None,
                 )
                 yield account_details
@@ -128,128 +118,98 @@ class CoveHostAccount(object):
         client: STSClient = self._get_boto3_client("sts", assuming_session)
         return client
 
-    def _resolve_target_accounts(self, target_ids: Optional[List[str]]) -> Set[str]:
-        accounts_to_ignore = self._gather_ignored_accounts()
-        logger.info(f"Ignoring account IDs: {accounts_to_ignore=}")
-        accounts_to_target = self._gather_target_accounts(target_ids)
-        final_accounts: Set = accounts_to_target - accounts_to_ignore
-        if len(final_accounts) < 1:
-            raise ValueError(
-                "There are no eligible account ids to run decorated func against"
+    @property
+    def target_accounts(self) -> Set[str]:
+        return set(self.target_account_map)
+
+    def _resolve_target_accounts(self) -> Dict[str, AccountTypeDef]:
+        account_map = self._map_active_accounts()
+
+        if self.provided_target_ids is not None:
+            included_accounts = self._list_accounts_for_all_resources(
+                self.provided_target_ids
             )
-        return final_accounts
-
-    def _gather_ignored_accounts(self) -> Set[str]:
-        ignored_accounts = {self.host_account_id}
-
-        if self.provided_ignore_ids:
-            accs, ous = self._get_validated_ids(self.provided_ignore_ids)
-            ignored_accounts.update(accs)
-            if ous:
-                accs_from_ous = self._get_all_accounts_by_organization_units(ous)
-                ignored_accounts.update(accs_from_ous)
-
-        return ignored_accounts
-
-    def _gather_target_accounts(self, targets: Optional[List[str]]) -> Set[str]:
-        if targets:
-            accs, ous = self._get_validated_ids(targets)
-            if ous:
-                accs_from_ous = self._get_all_accounts_by_organization_units(ous)
-                accs.extend(accs_from_ous)
-            return set(accs)
         else:
-            # No target_ids passed, getting all accounts in org
-            return self._get_active_org_accounts()
+            included_accounts = set(account_map)
 
-    def _get_validated_ids(self, ids: List[str]) -> Tuple[List[str], List[str]]:
-
-        accounts: List[str] = []
-        ous: List[str] = []
-
-        for current_id in ids:
-            if not isinstance(current_id, str):
-                raise TypeError(
-                    f"{current_id} is an incorrect type: all account and ou id's must be strings not {type(current_id)}"  # noqa E501
-                )
-            if re.match(r"^\d{12}$", current_id):
-                accounts.append(current_id)
-                continue
-            if re.match(r"^ou-[0-9a-z]{4,32}-[a-z0-9]{8,32}$", current_id):
-                ous.append(current_id)
-                continue
-            raise ValueError(
-                f"provided id is neither an aws account nor an ou: {current_id}"
+        if self.provided_ignore_ids is not None:
+            ignored_accounts = self._list_accounts_for_all_resources(
+                self.provided_ignore_ids
             )
+        else:
+            ignored_accounts = set()
 
-        return accounts, ous
+        target_accounts = included_accounts - ignored_accounts - {self.host_account_id}
 
-    def _get_all_accounts_by_organization_units(
-        self, target_ous: List[str]
-    ) -> List[str]:
+        return {
+            _id: account
+            for _id, account in account_map.items()
+            if _id in target_accounts
+        }
 
-        account_list: List[str] = []
+    def _list_accounts_for_all_resources(self, resource_ids: List[str]) -> Set[str]:
+        accounts: Set[str] = set()
+        for res in resource_ids:
+            accounts.update(self._list_accounts_for_resource(res))
+        return accounts
 
-        for parent_ou in target_ous:
-
-            current_ou_list: List[str] = []
-
-            # current_ou_list is mutated and recursivly populated with all childs
-            self._get_all_child_ous(parent_ou, current_ou_list)
-
-            # for complete list add parent ou as well to list of child ous
-            current_ou_list.append(parent_ou)
-
-            account_list.extend(
-                self._get_accounts_by_organization_units(current_ou_list)
-            )
-
-        return account_list
-
-    def _get_all_child_ous(self, parent_ou: str, ou_list: List[str]) -> None:
-        """Depth-first recursion mutates the current_ou_list present in the calling
-        function to establish all children of a parent OU"""
-        child_ous = self._get_child_ous(parent_ou)
-        child_ous_list = [ou["Id"] for ou in child_ous["Children"]]
-        ou_list.extend(child_ous_list)
-
-        for ou in child_ous_list:
-            self._get_all_child_ous(ou, ou_list)
-
-    def _get_accounts_by_organization_units(
-        self, organization_units: List[str]
-    ) -> List[str]:
-
-        account_list: List[str] = []
-
-        for ou in organization_units:
-            ou_children = self._get_child_accounts(ou)
-            account_list.extend(acc["Id"] for acc in ou_children["Children"])
-
-        return account_list
-
-    def _get_active_org_accounts(self) -> Set[str]:
-        all_org_accounts = (
-            self.org_client.get_paginator("list_accounts")
-            .paginate()
-            .build_full_result()["Accounts"]
-        )
-        return {acc["Id"] for acc in all_org_accounts if acc["Status"] == "ACTIVE"}
-
-    @lru_cache()
-    def _get_child_ous(self, parent_ou: str) -> ListChildrenResponseTypeDef:
-        return cast(
-            ListChildrenResponseTypeDef,
-            self.org_client.get_paginator("list_children")
-            .paginate(ChildType="ORGANIZATIONAL_UNIT", ParentId=parent_ou)
-            .build_full_result(),
+    def _list_accounts_for_resource(self, resource_id: str) -> Set[str]:
+        if self._is_account_id(resource_id):
+            return {resource_id}
+        if self._is_organizational_unit_id(resource_id):
+            return self._list_descendant_accounts(resource_id)
+        raise ValueError(
+            f"provided id is neither an aws account nor an ou: {resource_id}"
         )
 
-    @lru_cache()
-    def _get_child_accounts(self, parent_ou: str) -> ListChildrenResponseTypeDef:
-        return cast(
-            ListChildrenResponseTypeDef,
-            self.org_client.get_paginator("list_children")
-            .paginate(ChildType="ACCOUNT", ParentId=parent_ou)
-            .build_full_result(),
+    def _is_organizational_unit_id(self, resource_id: str) -> bool:
+        return bool(re.match(r"^ou-[0-9a-z]{4,32}-[a-z0-9]{8,32}$", resource_id))
+
+    def _is_account_id(self, resource_id: str) -> bool:
+        return bool(re.match(r"^\d{12}$", resource_id))
+
+    def _list_descendant_accounts(self, ancestor_id: str) -> Set[str]:
+        descendant_accounts = self._list_accounts_for_parent(ancestor_id)
+
+        child_ous = self._list_organizational_units_for_parent(ancestor_id)
+
+        for ou in child_ous:
+            descendant_accounts.update(self._list_descendant_accounts(ou))
+
+        return descendant_accounts
+
+    @lru_cache
+    def _list_accounts_for_parent(self, parent_id: str) -> Set[str]:
+        pages = self.org_client.get_paginator("list_accounts_for_parent").paginate(
+            ParentId=parent_id
         )
+
+        accounts = {account["Id"] for page in pages for account in page["Accounts"]}
+
+        return accounts
+
+    @lru_cache
+    def _list_organizational_units_for_parent(self, parent_id: str) -> Set[str]:
+        pages = self.org_client.get_paginator(
+            "list_organizational_units_for_parent"
+        ).paginate(ParentId=parent_id)
+
+        organizational_units = {
+            organizational_unit["Id"]
+            for page in pages
+            for organizational_unit in page["OrganizationalUnits"]
+        }
+
+        return organizational_units
+
+    def _map_active_accounts(self) -> Dict[str, AccountTypeDef]:
+        pages = self.org_client.get_paginator("list_accounts").paginate()
+
+        active_accounts = {
+            account["Id"]: account
+            for page in pages
+            for account in page["Accounts"]
+            if account["Status"] == "ACTIVE"
+        }
+
+        return active_accounts

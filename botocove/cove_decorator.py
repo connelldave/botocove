@@ -25,11 +25,14 @@ def cove(
     raise_exception: bool = False,
     org_master: bool = True,
     thread_workers: int = 20,
-    regions: Optional[List[str]] = None
+    regions: Optional[List[str]] = None,
 ) -> Callable:
     def decorator(func: Callable[..., Any]) -> Callable[..., CoveOutput]:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> CoveOutput:
+
+            _validate_ids(target_ids)
+            _validate_ids(ignore_ids)
 
             host_account = CoveHostAccount(
                 target_ids=target_ids,
@@ -80,3 +83,17 @@ def cove(
         return decorator
     else:
         return decorator(_func)
+
+
+def _validate_ids(ids: Optional[List[str]]) -> None:
+    if ids is None:
+        return
+
+    for _id in ids:
+        if isinstance(_id, str):
+            continue
+
+        raise TypeError(
+            f"{_id} is an incorrect type: all account and ou id's must be strings "
+            f"not {type(_id)}"
+        )
