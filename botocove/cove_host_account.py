@@ -39,7 +39,6 @@ class CoveHostAccount(object):
         self.thread_workers = thread_workers
 
         self.sts_client = self._get_boto3_sts_client(assuming_session)
-        self.org_client = self._get_boto3_org_client(assuming_session)
 
         self.host_account_id = self.sts_client.get_caller_identity()["Account"]
 
@@ -50,7 +49,15 @@ class CoveHostAccount(object):
 
         self.provided_ignore_ids = ignore_ids
         self.provided_target_ids = target_ids
-        self.target_account_map = self._resolve_target_accounts()
+
+        if not org_master and self.provided_target_ids:
+            account_map = _map_non_org_accounts(self.provided_target_ids)
+        else:
+            self.org_client = self._get_boto3_org_client(assuming_session)
+            account_map = self._map_active_accounts()
+
+        self.target_account_map = self._resolve_target_accounts(account_map)
+
         if not self.target_accounts:
             raise ValueError(
                 "There are no eligible account ids to run decorated func against"
@@ -81,10 +88,10 @@ class CoveHostAccount(object):
                     AssumeRoleSuccess=False,
                     Region=region,
                     ExceptionDetails=None,
-                    Name=account["Name"],
-                    Arn=account["Arn"],
-                    Email=account["Email"],
-                    Status=account["Status"],
+                    Name=account.get("Name"),
+                    Arn=account.get("Arn"),
+                    Email=account.get("Email"),
+                    Status=account.get("Status"),
                     Result=None,
                 )
                 yield account_details
@@ -122,8 +129,9 @@ class CoveHostAccount(object):
     def target_accounts(self) -> Set[str]:
         return set(self.target_account_map)
 
-    def _resolve_target_accounts(self) -> Dict[str, AccountTypeDef]:
-        account_map = self._map_active_accounts()
+    def _resolve_target_accounts(
+        self, account_map: Dict[str, AccountTypeDef]
+    ) -> Dict[str, AccountTypeDef]:
 
         if self.provided_target_ids is not None:
             included_accounts = self._list_accounts_for_all_resources(
@@ -213,3 +221,10 @@ class CoveHostAccount(object):
         }
 
         return active_accounts
+
+
+def _map_non_org_accounts(account_ids: List[str]) -> Dict[str, AccountTypeDef]:
+    """Return a degenerate account map for non-org-accounts. The AccountTypeDef
+    dict has only an Id key."""
+
+    return {_id: AccountTypeDef(Id=_id) for _id in account_ids}
