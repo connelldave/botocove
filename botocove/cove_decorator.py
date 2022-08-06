@@ -31,8 +31,8 @@ def cove(
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> CoveOutput:
 
-            _validate_ids(target_ids)
-            _validate_ids(ignore_ids)
+            _typecheck_id_list(target_ids)
+            _typecheck_id_list(ignore_ids)
 
             host_account = CoveHostAccount(
                 target_ids=target_ids,
@@ -85,15 +85,17 @@ def cove(
         return decorator(_func)
 
 
-def _validate_ids(ids: Optional[List[str]]) -> None:
-    if ids is None:
+def _typecheck_id_list(list_of_ids: Optional[List[str]]) -> None:
+    if list_of_ids is None:
         return
+    for _id in list_of_ids:
+        _typecheck_id(_id)
 
-    for _id in ids:
-        if isinstance(_id, str):
-            continue
 
-        raise TypeError(
-            f"{_id} is an incorrect type: all account and ou id's must be strings "
-            f"not {type(_id)}"
-        )
+def _typecheck_id(_id: str) -> None:
+    if isinstance(_id, str):
+        return
+    raise TypeError(
+        f"{_id} is an incorrect type: all account and ou id's must be strings "
+        f"not {type(_id)}"
+    )
