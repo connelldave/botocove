@@ -1,6 +1,7 @@
 import functools
 import logging
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, Dict, List, Optional
+from warnings import warn
 
 from boto3.session import Session
 from mypy_boto3_sts.type_defs import PolicyDescriptorTypeTypeDef
@@ -23,13 +24,17 @@ def cove(
     policy_arns: Optional[List[PolicyDescriptorTypeTypeDef]] = None,
     assuming_session: Optional[Session] = None,
     raise_exception: bool = False,
-    org_master: bool = True,
     thread_workers: int = 20,
     regions: Optional[List[str]] = None,
+    **cove_kwargs: Any,
 ) -> Callable:
     def decorator(func: Callable[..., Any]) -> Callable[..., CoveOutput]:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> CoveOutput:
+
+            _warn_if_org_master_is_set(cove_kwargs)
+            _raise_type_error_for_any_kwarg_except_org_master(cove_kwargs)
+            org_master = True
 
             _typecheck_id_list(target_ids)
             _typecheck_id_list(ignore_ids)
@@ -83,6 +88,22 @@ def cove(
         return decorator
     else:
         return decorator(_func)
+
+
+def _warn_if_org_master_is_set(kwargs: Dict[str, Any]) -> None:
+    if "org_master" not in kwargs:
+        return
+    warn(
+        "Don't set org_master. cove behaves as if it were True",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
+
+def _raise_type_error_for_any_kwarg_except_org_master(kwargs: Dict[str, Any]) -> None:
+    for key in kwargs:
+        if key != "org_master":
+            raise TypeError(f"cove() got an unexpected keyword argument '{key}'")
 
 
 def _typecheck_id_list(list_of_ids: Optional[List[str]]) -> None:
