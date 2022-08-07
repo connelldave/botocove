@@ -38,9 +38,11 @@ class CoveHostAccount(object):
 
         self.thread_workers = thread_workers
 
-        self.sts_client = self._get_boto3_sts_client(assuming_session)
+        # sts_client is no longer used, but it left here in case it is part of
+        # the public interface.
+        self.sts_client = _get_boto3_sts_client(assuming_session, thread_workers)
 
-        self.host_account_id = self.sts_client.get_caller_identity()["Account"]
+        self.host_account_id = _get_host_account_id(assuming_session, thread_workers)
 
         if regions is None:
             self.target_regions = [None]
@@ -53,10 +55,12 @@ class CoveHostAccount(object):
         if not org_master and self.provided_target_ids:
             account_map = _map_non_org_accounts(self.provided_target_ids)
         else:
-            self.org_client = self._get_boto3_org_client(assuming_session)
-            account_map = self._map_active_accounts()
+            self.org_client = _get_boto3_org_client(assuming_session, thread_workers)
+            account_map = _map_active_accounts(self.org_client)
 
-        self.target_account_map = self._resolve_target_accounts(account_map)
+        self.target_account_map = _resolve_target_accounts(
+            self.org_client, account_map, target_ids, ignore_ids, self.host_account_id
+        )
 
         if not self.target_accounts:
             raise ValueError(
@@ -96,131 +100,117 @@ class CoveHostAccount(object):
                 )
                 yield account_details
 
-    def _get_boto3_client(
-        self,
-        clientname: Union[Literal["organizations"], Literal["sts"]],
-        assuming_session: Optional[Session],
-    ) -> Any:
-        if assuming_session:
-            logger.info(f"Using provided Boto3 session {assuming_session}")
-            return assuming_session.client(
-                service_name=clientname,
-                config=Config(max_pool_connections=self.thread_workers),
-            )
-        logger.info("No Boto3 session argument: using credential chain")
-        return boto3.client(
-            service_name=clientname,
-            config=Config(max_pool_connections=self.thread_workers),
-        )
-
-    def _get_boto3_org_client(
-        self, assuming_session: Optional[Session]
-    ) -> OrganizationsClient:
-        client: OrganizationsClient = self._get_boto3_client(
-            "organizations", assuming_session
-        )
-        return client
-
-    def _get_boto3_sts_client(self, assuming_session: Optional[Session]) -> STSClient:
-        client: STSClient = self._get_boto3_client("sts", assuming_session)
-        return client
-
+    # Is target_accounts part of the public interface? I see it used in tests but
+    # I don't see why a user would refer to it.
     @property
     def target_accounts(self) -> Set[str]:
         return set(self.target_account_map)
 
-    def _resolve_target_accounts(
-        self, account_map: Dict[str, AccountTypeDef]
-    ) -> Dict[str, AccountTypeDef]:
 
-        if self.provided_target_ids is not None:
-            included_accounts = self._list_accounts_for_all_resources(
-                self.provided_target_ids
-            )
-        else:
-            included_accounts = set(account_map)
+def _resolve_target_accounts(
+    client: OrganizationsClient,
+    account_map: Dict[str, AccountTypeDef],
+    target_ids: Optional[List[str]],
+    ignore_ids: Optional[List[str]],
+    host_account_id: str,
+) -> Dict[str, AccountTypeDef]:
 
-        if self.provided_ignore_ids is not None:
-            ignored_accounts = self._list_accounts_for_all_resources(
-                self.provided_ignore_ids
-            )
-        else:
-            ignored_accounts = set()
+    if target_ids is not None:
+        included_accounts = _list_accounts_for_all_resources(client, target_ids)
+    else:
+        included_accounts = set(account_map)
 
-        target_accounts = included_accounts - ignored_accounts - {self.host_account_id}
+    if ignore_ids is not None:
+        ignored_accounts = _list_accounts_for_all_resources(client, ignore_ids)
+    else:
+        ignored_accounts = set()
 
-        return {
-            _id: account
-            for _id, account in account_map.items()
-            if _id in target_accounts
-        }
+    target_accounts = included_accounts - ignored_accounts - {host_account_id}
 
-    def _list_accounts_for_all_resources(self, resource_ids: List[str]) -> Set[str]:
-        accounts: Set[str] = set()
-        for res in resource_ids:
-            accounts.update(self._list_accounts_for_resource(res))
-        return accounts
+    return {
+        _id: account for _id, account in account_map.items() if _id in target_accounts
+    }
 
-    def _list_accounts_for_resource(self, resource_id: str) -> Set[str]:
-        if self._is_account_id(resource_id):
-            return {resource_id}
-        if self._is_organizational_unit_id(resource_id):
-            return self._list_descendant_accounts(resource_id)
-        raise ValueError(
-            f"provided id is neither an aws account nor an ou: {resource_id}"
-        )
 
-    def _is_organizational_unit_id(self, resource_id: str) -> bool:
-        return bool(re.match(r"^ou-[0-9a-z]{4,32}-[a-z0-9]{8,32}$", resource_id))
+def _list_accounts_for_all_resources(
+    client: OrganizationsClient, resource_ids: List[str]
+) -> Set[str]:
+    accounts: Set[str] = set()
+    for res in resource_ids:
+        accounts.update(_list_accounts_for_resource(client, res))
+    return accounts
 
-    def _is_account_id(self, resource_id: str) -> bool:
-        return bool(re.match(r"^\d{12}$", resource_id))
 
-    def _list_descendant_accounts(self, ancestor_id: str) -> Set[str]:
-        descendant_accounts = self._list_accounts_for_parent(ancestor_id)
+def _list_accounts_for_resource(
+    client: OrganizationsClient, resource_id: str
+) -> Set[str]:
+    if _is_account_id(resource_id):
+        return {resource_id}
+    if _is_organizational_unit_id(resource_id):
+        return _list_descendant_accounts(client, resource_id)
+    raise ValueError(f"provided id is neither an aws account nor an ou: {resource_id}")
 
-        child_ous = self._list_organizational_units_for_parent(ancestor_id)
 
-        for ou in child_ous:
-            descendant_accounts.update(self._list_descendant_accounts(ou))
+def _is_organizational_unit_id(resource_id: str) -> bool:
+    return bool(re.match(r"^ou-[0-9a-z]{4,32}-[a-z0-9]{8,32}$", resource_id))
 
-        return descendant_accounts
 
-    @lru_cache
-    def _list_accounts_for_parent(self, parent_id: str) -> Set[str]:
-        pages = self.org_client.get_paginator("list_accounts_for_parent").paginate(
-            ParentId=parent_id
-        )
+def _is_account_id(resource_id: str) -> bool:
+    return bool(re.match(r"^\d{12}$", resource_id))
 
-        accounts = {account["Id"] for page in pages for account in page["Accounts"]}
 
-        return accounts
+def _list_descendant_accounts(
+    client: OrganizationsClient, ancestor_id: str
+) -> Set[str]:
+    descendant_accounts = _list_accounts_for_parent(client, ancestor_id)
 
-    @lru_cache
-    def _list_organizational_units_for_parent(self, parent_id: str) -> Set[str]:
-        pages = self.org_client.get_paginator(
-            "list_organizational_units_for_parent"
-        ).paginate(ParentId=parent_id)
+    child_ous = _list_organizational_units_for_parent(client, ancestor_id)
 
-        organizational_units = {
-            organizational_unit["Id"]
-            for page in pages
-            for organizational_unit in page["OrganizationalUnits"]
-        }
+    for ou in child_ous:
+        descendant_accounts.update(_list_descendant_accounts(client, ou))
 
-        return organizational_units
+    return descendant_accounts
 
-    def _map_active_accounts(self) -> Dict[str, AccountTypeDef]:
-        pages = self.org_client.get_paginator("list_accounts").paginate()
 
-        active_accounts = {
-            account["Id"]: account
-            for page in pages
-            for account in page["Accounts"]
-            if account["Status"] == "ACTIVE"
-        }
+@lru_cache
+def _list_accounts_for_parent(client: OrganizationsClient, parent_id: str) -> Set[str]:
+    pages = client.get_paginator("list_accounts_for_parent").paginate(
+        ParentId=parent_id
+    )
 
-        return active_accounts
+    accounts = {account["Id"] for page in pages for account in page["Accounts"]}
+
+    return accounts
+
+
+@lru_cache
+def _list_organizational_units_for_parent(
+    client: OrganizationsClient, parent_id: str
+) -> Set[str]:
+    pages = client.get_paginator("list_organizational_units_for_parent").paginate(
+        ParentId=parent_id
+    )
+
+    organizational_units = {
+        organizational_unit["Id"]
+        for page in pages
+        for organizational_unit in page["OrganizationalUnits"]
+    }
+
+    return organizational_units
+
+
+def _map_active_accounts(client: OrganizationsClient) -> Dict[str, AccountTypeDef]:
+    pages = client.get_paginator("list_accounts").paginate()
+
+    active_accounts = {
+        account["Id"]: account
+        for page in pages
+        for account in page["Accounts"]
+        if account["Status"] == "ACTIVE"
+    }
+
+    return active_accounts
 
 
 def _map_non_org_accounts(account_ids: List[str]) -> Dict[str, AccountTypeDef]:
@@ -228,3 +218,50 @@ def _map_non_org_accounts(account_ids: List[str]) -> Dict[str, AccountTypeDef]:
     dict has only an Id key."""
 
     return {_id: AccountTypeDef(Id=_id) for _id in account_ids}
+
+
+def _get_host_account_id(session: Optional[Session], thread_workers: int) -> str:
+    # I want to inline the STSClient instantiation by calling client directly.
+    # But chcek about the logging because requirements first.
+    # Is the client logging output considered part of the public interface?
+    # I think we don't need special threading settings in these clients any more.
+    # CoveHostAccount is set up in a single thread.
+    client = _get_boto3_sts_client(session, thread_workers)
+    host_account_id = client.get_caller_identity()["Account"]
+    return host_account_id
+
+
+def _get_boto3_org_client(
+    assuming_session: Optional[Session],
+    thread_workers: int,
+) -> OrganizationsClient:
+    client: OrganizationsClient = _get_boto3_client(
+        "organizations", assuming_session, thread_workers
+    )
+    return client
+
+
+def _get_boto3_sts_client(
+    assuming_session: Optional[Session],
+    thread_workers: int,
+) -> STSClient:
+    client: STSClient = _get_boto3_client("sts", assuming_session, thread_workers)
+    return client
+
+
+def _get_boto3_client(
+    clientname: Union[Literal["organizations"], Literal["sts"]],
+    assuming_session: Optional[Session],
+    thread_workers: int,
+) -> Any:
+    if assuming_session:
+        logger.info(f"Using provided Boto3 session {assuming_session}")
+        return assuming_session.client(
+            service_name=clientname,
+            config=Config(max_pool_connections=thread_workers),
+        )
+    logger.info("No Boto3 session argument: using credential chain")
+    return boto3.client(
+        service_name=clientname,
+        config=Config(max_pool_connections=thread_workers),
+    )
