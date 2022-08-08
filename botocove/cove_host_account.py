@@ -6,10 +6,12 @@ from typing import Any, Dict, Iterable, List, Literal, Optional, Sequence, Set, 
 import boto3
 from boto3.session import Session
 from botocore.config import Config
+from botocore.exceptions import ClientError
 from mypy_boto3_organizations.client import OrganizationsClient
 from mypy_boto3_organizations.type_defs import AccountTypeDef
 from mypy_boto3_sts.client import STSClient
 from mypy_boto3_sts.type_defs import PolicyDescriptorTypeTypeDef
+from typing_extensions import Protocol
 
 from botocove.cove_types import CoveSessionInformation
 
@@ -41,6 +43,7 @@ class CoveHostAccount(object):
         # sts_client is no longer used, but it left here in case it is part of
         # the public interface.
         self.sts_client = _get_boto3_sts_client(assuming_session, thread_workers)
+        self.org_client = _get_boto3_org_client(assuming_session, thread_workers)
 
         self.host_account_id = _get_host_account_id(assuming_session, thread_workers)
 
@@ -52,14 +55,21 @@ class CoveHostAccount(object):
         self.provided_ignore_ids = ignore_ids
         self.provided_target_ids = target_ids
 
-        if not org_master and self.provided_target_ids:
-            account_map = _map_non_org_accounts(self.provided_target_ids)
+        resolver: Resolver
+
+        if _host_account_is_in_organization(self.org_client):
+            account_map = _map_active_accounts_with_org_metadata(self.org_client)
+            resolver = AccountAndOrganizationalUnitResolver(self.org_client)
         else:
-            self.org_client = _get_boto3_org_client(assuming_session, thread_workers)
-            account_map = _map_active_accounts(self.org_client)
+            resolver = AccountResolver()
+
+            if self.provided_target_ids:
+                account_map = _map_input_without_org_metadata(self.provided_target_ids)
+            else:
+                account_map = {}
 
         self.target_account_map = _resolve_target_accounts(
-            self.org_client, account_map, target_ids, ignore_ids, self.host_account_id
+            resolver, account_map, target_ids, ignore_ids, self.host_account_id
         )
 
         if not self.target_accounts:
@@ -107,8 +117,22 @@ class CoveHostAccount(object):
         return set(self.target_account_map)
 
 
+def _host_account_is_in_organization(client: OrganizationsClient) -> bool:
+    try:
+        client.describe_organization()
+        return True
+    except ClientError as error:
+        if _organizations_service_not_in_use(error):
+            return False
+        raise error
+
+
+def _organizations_service_not_in_use(error: ClientError) -> bool:
+    return error.response["Error"]["Code"] == "AWSOrganizationsNotInUseException"
+
+
 def _resolve_target_accounts(
-    client: OrganizationsClient,
+    resolver: "Resolver",
     account_map: Dict[str, AccountTypeDef],
     target_ids: Optional[List[str]],
     ignore_ids: Optional[List[str]],
@@ -116,12 +140,12 @@ def _resolve_target_accounts(
 ) -> Dict[str, AccountTypeDef]:
 
     if target_ids is not None:
-        included_accounts = _list_accounts_for_all_resources(client, target_ids)
+        included_accounts = _list_accounts_for_all_resources(resolver, target_ids)
     else:
         included_accounts = set(account_map)
 
     if ignore_ids is not None:
-        ignored_accounts = _list_accounts_for_all_resources(client, ignore_ids)
+        ignored_accounts = _list_accounts_for_all_resources(resolver, ignore_ids)
     else:
         ignored_accounts = set()
 
@@ -133,22 +157,53 @@ def _resolve_target_accounts(
 
 
 def _list_accounts_for_all_resources(
-    client: OrganizationsClient, resource_ids: List[str]
+    resolver: "Resolver", resource_ids: List[str]
 ) -> Set[str]:
     accounts: Set[str] = set()
     for res in resource_ids:
-        accounts.update(_list_accounts_for_resource(client, res))
+        accounts.update(resolver.resolve_accounts(res))
     return accounts
 
 
-def _list_accounts_for_resource(
-    client: OrganizationsClient, resource_id: str
-) -> Set[str]:
-    if _is_account_id(resource_id):
-        return {resource_id}
-    if _is_organizational_unit_id(resource_id):
-        return _list_descendant_accounts(client, resource_id)
-    raise ValueError(f"provided id is neither an aws account nor an ou: {resource_id}")
+class Resolver(Protocol):
+    def resolve_accounts(self, resource_id: str) -> Set[str]:
+        ...
+
+
+class AccountResolver:
+    def resolve_accounts(self, resource_id: str) -> Set[str]:
+        if _is_account_id(resource_id):
+            return {resource_id}
+        raise ValueError(f"provided id is not an aws account: {resource_id}")
+
+
+class OrganizationalUnitResolver:
+    def __init__(self, org_client: OrganizationsClient) -> None:
+        self._org_client = org_client
+
+    def resolve_accounts(self, resource_id: str) -> Set[str]:
+        if _is_organizational_unit_id(resource_id):
+            return _list_descendant_accounts(self._org_client, resource_id)
+        raise ValueError(f"provided id is not an ou: {resource_id}")
+
+
+class AccountAndOrganizationalUnitResolver:
+    def __init__(self, org_client: OrganizationsClient) -> None:
+        self._org_client = org_client
+
+    def resolve_accounts(self, resource_id: str) -> Set[str]:
+        resolvers: List[Resolver] = [
+            AccountResolver(),
+            OrganizationalUnitResolver(self._org_client),
+        ]
+        for resolver in resolvers:
+            try:
+                return resolver.resolve_accounts(resource_id)
+            except ValueError:
+                continue
+        raise ValueError(
+            f"provided id is neither an aws account nor an ou: {resource_id}"
+        )
 
 
 def _is_organizational_unit_id(resource_id: str) -> bool:
@@ -200,7 +255,9 @@ def _list_organizational_units_for_parent(
     return organizational_units
 
 
-def _map_active_accounts(client: OrganizationsClient) -> Dict[str, AccountTypeDef]:
+def _map_active_accounts_with_org_metadata(
+    client: OrganizationsClient,
+) -> Dict[str, AccountTypeDef]:
     pages = client.get_paginator("list_accounts").paginate()
 
     active_accounts = {
@@ -213,7 +270,9 @@ def _map_active_accounts(client: OrganizationsClient) -> Dict[str, AccountTypeDe
     return active_accounts
 
 
-def _map_non_org_accounts(account_ids: List[str]) -> Dict[str, AccountTypeDef]:
+def _map_input_without_org_metadata(
+    account_ids: List[str],
+) -> Dict[str, AccountTypeDef]:
     """Return a degenerate account map for non-org-accounts. The AccountTypeDef
     dict has only an Id key."""
 
