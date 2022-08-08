@@ -40,12 +40,14 @@ class CoveHostAccount(object):
 
         self.thread_workers = thread_workers
 
-        # sts_client is no longer used, but it left here in case it is part of
-        # the public interface.
+        # I would pass a session around and instantiate the necessary client directly.
+        # I think we don't need special threading settings in these clients any more.
+        # CoveHostAccount is set up in a single thread.
+        # Is the client logging output considered part of the public interface?
         self.sts_client = _get_boto3_sts_client(assuming_session, thread_workers)
         self.org_client = _get_boto3_org_client(assuming_session, thread_workers)
 
-        self.host_account_id = _get_host_account_id(assuming_session, thread_workers)
+        self.host_account_id = _get_host_account_id(self.sts_client)
 
         if regions is None:
             self.target_regions = [None]
@@ -279,13 +281,7 @@ def _map_input_without_org_metadata(
     return {_id: AccountTypeDef(Id=_id) for _id in account_ids}
 
 
-def _get_host_account_id(session: Optional[Session], thread_workers: int) -> str:
-    # I want to inline the STSClient instantiation by calling client directly.
-    # But chcek about the logging because requirements first.
-    # Is the client logging output considered part of the public interface?
-    # I think we don't need special threading settings in these clients any more.
-    # CoveHostAccount is set up in a single thread.
-    client = _get_boto3_sts_client(session, thread_workers)
+def _get_host_account_id(client: STSClient) -> str:
     host_account_id = client.get_caller_identity()["Account"]
     return host_account_id
 
