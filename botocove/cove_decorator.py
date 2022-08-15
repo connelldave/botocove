@@ -25,11 +25,13 @@ def cove(
     raise_exception: bool = False,
     org_master: bool = True,
     thread_workers: int = 20,
-    regions: Optional[List[str]] = None
+    regions: Optional[List[str]] = None,
 ) -> Callable:
     def decorator(func: Callable[..., Any]) -> Callable[..., CoveOutput]:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> CoveOutput:
+
+            _typecheck_regions(regions)
 
             host_account = CoveHostAccount(
                 target_ids=target_ids,
@@ -80,3 +82,12 @@ def cove(
         return decorator
     else:
         return decorator(_func)
+
+
+def _typecheck_regions(list_of_regions: Optional[List[str]]) -> None:
+    if list_of_regions is None:
+        return
+    if isinstance(list_of_regions, str):
+        raise TypeError(
+            f"regions must be a list of str. Got str {repr(list_of_regions)}."
+        )
