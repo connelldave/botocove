@@ -124,13 +124,9 @@ def _host_account_is_in_organization(client: OrganizationsClient) -> bool:
         client.describe_organization()
         return True
     except ClientError as error:
-        if _organizations_service_not_in_use(error):
+        if error.response["Error"]["Code"] == "AWSOrganizationsNotInUseException":
             return False
         raise error
-
-
-def _organizations_service_not_in_use(error: ClientError) -> bool:
-    return error.response["Error"]["Code"] == "AWSOrganizationsNotInUseException"
 
 
 def _resolve_target_accounts(
