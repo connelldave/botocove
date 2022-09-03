@@ -16,10 +16,15 @@ jobs:
           python-version: 3.8
 
       - name: Setup Poetry
-        uses: Gr1N/setup-poetry@v4
+        run: |
+          export POETRY_HOME=/opt/poetry
+          python3 install-poetry.py --version 1.2.0
+          $POETRY_HOME/bin/poetry --version
 
       - name: Install dev packages
-        run: poetry install -n -v
+        run: /opt/poetry/bin/poetry install -n -v
 
       - name: Lint with flakeheaven
-        run: poetry run pre-commit run --all-files
+        run: |
+          export PATH="/opt/poetry/bin:$PATH"
+          poetry run pre-commit run --all-files

@@ -19,9 +19,12 @@ jobs:
           python-version: 3.8
 
       - name: Setup Poetry
-        uses: Gr1N/setup-poetry@v4
+        run: |
+          export POETRY_HOME=/opt/poetry
+          python3 install-poetry.py --version 1.2.0
+          $POETRY_HOME/bin/poetry --version
 
       - name: Build and publish package
         run: |
-          poetry config pypi-token.pypi "${{ secrets.pypi_password }}"
-          poetry publish -n --build
+          /opt/poetry/bin/poetry config pypi-token.pypi "${{ secrets.pypi_password }}"
+          /opt/poetry/bin/poetry publish -n --build

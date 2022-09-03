@@ -47,7 +47,7 @@ use_parentheses=true
 line_length=88
 
 [tool.flakeheaven]
-exclude = ["README.rst", "README.md", ".git","__pycache__",".venv"]
+exclude = ["README.rst", "README.md", ".git","__pycache__",".venv", "install-poetry.py"]
 format = "colored"
 max_line_length = 88
 show_source = true
