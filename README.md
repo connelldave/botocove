@@ -13,7 +13,7 @@ context.
 - Dolphin Themed 🐬
 
 Botocove is a simple decorator for functions to remove time and complexity
-burden. Uses`ThreadPoolExecutor` to run boto3 sessions against AWS accounts
+burden. Uses a `ThreadPoolExecutor` to run boto3 sessions against AWS accounts
 concurrently.
 
 Decorating a function in `@cove` provides a boto3 session to the decorated
@@ -26,26 +26,30 @@ arguments to understand safe experimentation with this package.
 
 ## Pre-requisites and Info
 
-An IAM user with `sts:assumerole` privilege, and accounts that have a trust
-relationship to the IAM user's account.
+An AWS session with `sts:assumerole` and `sts:get-caller-identity` access,
+and accounts that contain a IAM role with trust relationship to the Botocove
+calling account.
 
-By default, the IAM user is expected to be in an AWS Organization Master
-account. You can alter nearly all behaviour of Cove with appropriate
-[arguments](#arguments)
+By default, the session is expected to be in an AWS Organization Master or
+a delegated Organization admin account. You can alter nearly all behaviour of
+Cove with appropriate [arguments](#arguments)
 
 Cove will not execute a function call in the account it's called from.
 
-Default requirements are:
+Default IAM requirements are:
 
-In the organization master account:
+In the Botocove calling account:
 
-- IAM permissions `sts:assumerole`, `sts:get-caller-identity` and
+- Base requirements `sts:assumerole` and `sts:get-caller-identity`
+- To run against an entire AWS Organization and capture account metadata:
 `organizations:list-accounts`
+- To run against specific Organizational Units: `organizations:list-children`
 
 In the organization member accounts:
 
-- An
-  [`OrganizationAccountAccessRole` role](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_accounts_access.html)
+- A target role that trusts the calling account - for example `AWSControlTowerExecution`
+or
+[`OrganizationAccountAccessRole` role](https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_accounts_access.html)
 
 See the [arguments](#arguments) section for how to change these defaults to work
 with any account configuration, including running without an AWS Organization.
@@ -142,7 +146,7 @@ Equivalent to:
 @cove(
     target_ids=None, ignore_ids=None, rolename=None, role_session_name=None,
     policy=None, policy_arns=None, assuming_session=None, raise_exception=False,
-    org_master=True, thread_workers=20, regions=None
+    thread_workers=20, regions=None
     )
 ```
 
@@ -199,16 +203,6 @@ to resolve all tasks and report their results instead of exiting early.
 `raise_exception=True` will allow a full stack trace to escape on the first
 exception seen; but will not gracefully or consistently interrupt running tasks.
 It is vital to run interruptible, idempotent code with this argument as `True`.
-
-`org_master`: bool
-
-Defaults to True. When True, will leverage the Boto3 Organizations API to list
-all accounts in the organization, and enrich each `CoveSession` with information
-available (`Id`, `Arn`, `Name`, `Status`, `Email`). Disabling this and providing
-your own full list of accounts may be a desirable optimisation if speed is an
-issue.
-
-`org_master=False` means only `Id` will be available to `CoveSession`.
 
 `thread_workers`: int
 

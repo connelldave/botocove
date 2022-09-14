@@ -6,6 +6,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.2] - 2022-14-09
+
+### Added
+
+- Botocove now has a simple typecheck for the account_ids kwarg to assert a list
+has been provided rather than a string.
+
+### Fixed
+
+- Botocove no longer calls DescribeAccount per account when running in an AWS
+organization.
+- `org_master` is now a deprecated kwarg: Botocove will optimistically check for
+permission
+to an AWS Organization to list accounts, and fall back to not adding metadata to
+CoveSession.
+
 ## [1.6.1] - 2022-04-03
 
 ### Fixed
