@@ -3,8 +3,6 @@ from typing import Any
 
 from boto3.session import Session
 from botocore.exceptions import ClientError
-from mypy_boto3_organizations.client import OrganizationsClient
-from mypy_boto3_organizations.type_defs import AccountTypeDef
 from mypy_boto3_sts.client import STSClient
 
 from botocove.cove_types import CoveSessionInformation
@@ -25,13 +23,11 @@ class CoveSession(Session):
     def __init__(
         self,
         session_info: CoveSessionInformation,
-        org_client: OrganizationsClient,
         sts_client: STSClient,
         org_master: bool,
     ) -> None:
         self.session_information = session_info
         self.org_master = org_master
-        self.org_client = org_client
         self.sts_client = sts_client
 
     def __repr__(self) -> str:
@@ -43,21 +39,6 @@ class CoveSession(Session):
             f"arn:aws:iam::{self.session_information['Id']}:role/"
             f"{self.session_information['RoleName']}"
         )
-
-        if self.org_master:
-            try:
-                account_description: AccountTypeDef = self.org_client.describe_account(
-                    AccountId=self.session_information["Id"]
-                )["Account"]
-                self.session_information["Arn"] = account_description["Arn"]
-                self.session_information["Email"] = account_description["Email"]
-                self.session_information["Name"] = account_description["Name"]
-                self.session_information["Status"] = account_description["Status"]
-            except ClientError:
-                logger.exception(
-                    "Failed to call describe_account for "
-                    f"{self.session_information['Id']}"
-                )
 
         try:
             logger.debug(f"Attempting to assume {role_arn}")

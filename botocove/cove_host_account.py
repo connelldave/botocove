@@ -3,6 +3,7 @@ import re
 from functools import lru_cache
 from typing import (
     Any,
+    Dict,
     Iterable,
     List,
     Literal,
@@ -17,8 +18,12 @@ from typing import (
 import boto3
 from boto3.session import Session
 from botocore.config import Config
+from botocore.exceptions import ClientError
 from mypy_boto3_organizations.client import OrganizationsClient
-from mypy_boto3_organizations.type_defs import ListChildrenResponseTypeDef
+from mypy_boto3_organizations.type_defs import (
+    AccountTypeDef,
+    ListChildrenResponseTypeDef,
+)
 from mypy_boto3_sts.client import STSClient
 from mypy_boto3_sts.type_defs import PolicyDescriptorTypeTypeDef
 
@@ -32,6 +37,7 @@ DEFAULT_ROLENAME = "OrganizationAccountAccessRole"
 
 class CoveHostAccount(object):
     target_regions: Sequence[Optional[str]]
+    account_data: Optional[Dict[str, AccountTypeDef]] = None
 
     def __init__(
         self,
@@ -59,6 +65,19 @@ class CoveHostAccount(object):
         else:
             self.target_regions = regions
 
+        try:
+            self.organization_account_ids: Set[str] = self._get_active_org_accounts()
+        except ClientError as e:
+            logger.info(
+                "Cove does not have the ability to call ListAccounts - "
+                "https://docs.aws.amazon.com/organizations/latest/APIReference/API_ListAccounts.html"  # noqa: E501
+            )
+            logger.info(
+                "Cove will only run with declared target IDs and will not enrich data "
+                "in session information."
+            )
+            logger.debug(f"Exception raised was {e}")
+
         self.provided_ignore_ids = ignore_ids
         self.target_accounts = self._resolve_target_accounts(target_ids)
         if not self.target_accounts:
@@ -82,22 +101,38 @@ class CoveHostAccount(object):
     def _generate_account_sessions(self) -> Iterable[CoveSessionInformation]:
         for region in self.target_regions:
             for account_id in self.target_accounts:
-                account_details: CoveSessionInformation = CoveSessionInformation(
-                    Id=account_id,
-                    RoleName=self.role_to_assume,
-                    RoleSessionName=self.role_session_name,
-                    Policy=self.policy,
-                    PolicyArns=self.policy_arns,
-                    AssumeRoleSuccess=False,
-                    Region=region,
-                    ExceptionDetails=None,
-                    Name=None,
-                    Arn=None,
-                    Email=None,
-                    Status=None,
-                    Result=None,
-                )
-                yield account_details
+                if self.account_data is not None:
+                    yield CoveSessionInformation(
+                        Id=account_id,
+                        RoleName=self.role_to_assume,
+                        RoleSessionName=self.role_session_name,
+                        Policy=self.policy,
+                        PolicyArns=self.policy_arns,
+                        AssumeRoleSuccess=False,
+                        Region=region,
+                        ExceptionDetails=None,
+                        Name=self.account_data[account_id]["Name"],
+                        Arn=self.account_data[account_id]["Arn"],
+                        Email=self.account_data[account_id]["Email"],
+                        Status=self.account_data[account_id]["Status"],
+                        Result=None,
+                    )
+                else:
+                    yield CoveSessionInformation(
+                        Id=account_id,
+                        RoleName=self.role_to_assume,
+                        RoleSessionName=self.role_session_name,
+                        Policy=self.policy,
+                        PolicyArns=self.policy_arns,
+                        AssumeRoleSuccess=False,
+                        Region=region,
+                        ExceptionDetails=None,
+                        Name=None,
+                        Arn=None,
+                        Email=None,
+                        Status=None,
+                        Result=None,
+                    )
 
     def _get_boto3_client(
         self,
@@ -160,7 +195,7 @@ class CoveHostAccount(object):
             return set(accs)
         else:
             # No target_ids passed, getting all accounts in org
-            return self._get_active_org_accounts()
+            return self.organization_account_ids
 
     def _get_validated_ids(self, ids: List[str]) -> Tuple[List[str], List[str]]:
 
@@ -229,21 +264,37 @@ class CoveHostAccount(object):
         return account_list
 
     def _get_active_org_accounts(self) -> Set[str]:
-        all_org_accounts = (
-            self.org_client.get_paginator("list_accounts")
-            .paginate()
-            .build_full_result()["Accounts"]
-        )
-        return {acc["Id"] for acc in all_org_accounts if acc["Status"] == "ACTIVE"}
+        """
+        Captures all account metadata into self.account_data for future lookup
+        and returns a set of account IDs in the AWS organization.
+        """
+        pages = self.org_client.get_paginator("list_accounts").paginate()
+        self.account_data: Dict[str, AccountTypeDef] = {
+            account["Id"]: account
+            for page in pages
+            for account in page["Accounts"]
+            if account["Status"] == "ACTIVE"
+        }
+
+        return set(self.account_data.keys())
 
     @lru_cache()
     def _get_child_ous(self, parent_ou: str) -> ListChildrenResponseTypeDef:
-        return cast(
-            ListChildrenResponseTypeDef,
-            self.org_client.get_paginator("list_children")
-            .paginate(ChildType="ORGANIZATIONAL_UNIT", ParentId=parent_ou)
-            .build_full_result(),
-        )
+        try:
+            return cast(
+                ListChildrenResponseTypeDef,
+                self.org_client.get_paginator("list_children")
+                .paginate(ChildType="ORGANIZATIONAL_UNIT", ParentId=parent_ou)
+                .build_full_result(),
+            )
+        except ClientError:
+            logger.error(
+                "Cove can only look up target accounts by OU when running from the "
+                "organization's management account or by a member account that is a "
+                "delegated administrator for an AWS service: "
+                "https://docs.aws.amazon.com/organizations/latest/APIReference/API_ListChildren.html"  # noqa: E501
+            )
+            raise
 
     @lru_cache()
     def _get_child_accounts(self, parent_ou: str) -> ListChildrenResponseTypeDef:
