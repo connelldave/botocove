@@ -3,7 +3,6 @@ from typing import Any
 
 from boto3.session import Session
 from botocore.exceptions import ClientError
-from mypy_boto3_organizations.client import OrganizationsClient
 from mypy_boto3_sts.client import STSClient
 
 from botocove.cove_types import CoveSessionInformation
@@ -24,13 +23,11 @@ class CoveSession(Session):
     def __init__(
         self,
         session_info: CoveSessionInformation,
-        org_client: OrganizationsClient,
         sts_client: STSClient,
         org_master: bool,
     ) -> None:
         self.session_information = session_info
         self.org_master = org_master
-        self.org_client = org_client
         self.sts_client = sts_client
 
     def __repr__(self) -> str:
