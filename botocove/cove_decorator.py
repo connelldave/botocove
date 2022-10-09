@@ -32,8 +32,11 @@ def cove(
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> CoveOutput:
 
-            _typecheck_regions(regions)
             _check_deprecation(cove_kwargs)
+
+            _typecheck_regions(regions)
+            _typecheck_id_list(target_ids)
+            _typecheck_id_list(ignore_ids)
 
             host_account = CoveHostAccount(
                 target_ids=target_ids,
@@ -101,4 +104,28 @@ def _check_deprecation(kwargs: Dict[str, Any]) -> None:
             DeprecationWarning,
             stacklevel=2,
         )
+    _raise_type_error_for_any_kwarg_except_org_master(kwargs)
     return None
+
+
+def _raise_type_error_for_any_kwarg_except_org_master(kwargs: Dict[str, Any]) -> None:
+    for key in kwargs:
+        if key != "org_master":
+            raise TypeError(f"Cove() got an unexpected keyword argument '{key}'")
+    return None
+
+
+def _typecheck_id_list(list_of_ids: Optional[List[str]]) -> None:
+    if list_of_ids is None:
+        return
+    for _id in list_of_ids:
+        _typecheck_id(_id)
+
+
+def _typecheck_id(_id: str) -> None:
+    if isinstance(_id, str):
+        return
+    raise TypeError(
+        f"{_id} is an incorrect type: all account and ou id's must be strings "
+        f"not {type(_id)}"
+    )
