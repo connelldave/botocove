@@ -24,10 +24,8 @@ class CoveSession(Session):
         self,
         session_info: CoveSessionInformation,
         sts_client: STSClient,
-        org_master: bool,
     ) -> None:
         self.session_information = session_info
-        self.org_master = org_master
         self.sts_client = sts_client
 
     def __repr__(self) -> str:

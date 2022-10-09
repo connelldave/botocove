@@ -67,7 +67,6 @@ class CoveRunner(object):
         cove_session = CoveSession(
             account_session_info,
             sts_client=self.host_account.sts_client,
-            org_master=self.host_account.org_master,
         )
         try:
             cove_session.activate_cove_session()

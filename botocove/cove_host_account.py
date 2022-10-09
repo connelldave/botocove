@@ -48,7 +48,6 @@ class CoveHostAccount(object):
         policy: Optional[str],
         policy_arns: Optional[List[PolicyDescriptorTypeTypeDef]],
         assuming_session: Optional[Session],
-        org_master: bool,
         thread_workers: int,
         regions: Optional[List[str]],
     ) -> None:
@@ -89,8 +88,6 @@ class CoveHostAccount(object):
         self.role_session_name = role_session_name or self.role_to_assume
         self.policy = policy
         self.policy_arns = policy_arns
-
-        self.org_master = org_master
 
     def get_cove_sessions(self) -> List[CoveSessionInformation]:
         logger.info(f"Getting session information for {self.target_accounts=}")
