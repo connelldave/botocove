@@ -1,6 +1,7 @@
 import functools
 import logging
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, Dict, List, Optional
+from warnings import warn
 
 from boto3.session import Session
 from mypy_boto3_sts.type_defs import PolicyDescriptorTypeTypeDef
@@ -23,15 +24,16 @@ def cove(
     policy_arns: Optional[List[PolicyDescriptorTypeTypeDef]] = None,
     assuming_session: Optional[Session] = None,
     raise_exception: bool = False,
-    org_master: bool = True,
     thread_workers: int = 20,
     regions: Optional[List[str]] = None,
+    **cove_kwargs: Any,
 ) -> Callable:
     def decorator(func: Callable[..., Any]) -> Callable[..., CoveOutput]:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> CoveOutput:
 
             _typecheck_regions(regions)
+            _check_deprecation(cove_kwargs)
 
             host_account = CoveHostAccount(
                 target_ids=target_ids,
@@ -40,7 +42,6 @@ def cove(
                 role_session_name=role_session_name,
                 policy=policy,
                 policy_arns=policy_arns,
-                org_master=org_master,
                 assuming_session=assuming_session,
                 thread_workers=thread_workers,
                 regions=regions,
@@ -91,3 +92,13 @@ def _typecheck_regions(list_of_regions: Optional[List[str]]) -> None:
         raise TypeError(
             f"regions must be a list of str. Got str {repr(list_of_regions)}."
         )
+
+
+def _check_deprecation(kwargs: Dict[str, Any]) -> None:
+    if "org_master" in kwargs:
+        warn(
+            "org_master is a deprecated kwarg since Cove 1.6.2 and has no effect",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+    return None

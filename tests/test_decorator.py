@@ -99,7 +99,6 @@ def test_decorated_simple_func_passed_session_name(
     @cove(
         assuming_session=mock_session,
         role_session_name=session_name,
-        org_master=False,
     )
     def simple_func(session: CoveSession) -> Optional[str]:
         return session.session_information["RoleSessionName"]
@@ -118,7 +117,6 @@ def test_decorated_simple_func_passed_policy(
     @cove(
         assuming_session=mock_session,
         policy=session_policy,
-        org_master=False,
     )
     def simple_func(session: CoveSession) -> Optional[str]:
         return session.session_information["Policy"]
@@ -139,7 +137,6 @@ def test_decorated_simple_func_passed_policy_arn(
     @cove(
         assuming_session=mock_session,
         policy_arns=session_policy_arns,
-        org_master=False,
     )
     def simple_func(
         session: CoveSession,
