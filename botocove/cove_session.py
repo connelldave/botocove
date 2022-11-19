@@ -50,6 +50,7 @@ class CoveSession(Session):
                     ("RoleSessionName", self.session_information["RoleSessionName"]),
                     ("Policy", self.session_information["Policy"]),
                     ("PolicyArns", self.session_information["PolicyArns"]),
+                    ("ExternalId", self.session_information["ExternalId"]),
                 ]
                 if v is not None
             }
