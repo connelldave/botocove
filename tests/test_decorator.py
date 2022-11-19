@@ -152,7 +152,7 @@ def test_decorated_simple_func_passed_policy_arn(
 def test_decorated_simple_func_passed_external_id(
     mock_session: Session, org_accounts: List[AccountTypeDef]
 ) -> None:
-    sts_external_id: str = 'a8h1q9zwrpo2873r2zby'
+    sts_external_id: str = "a8h1q9zwrpo2873r2zby"
 
     @cove(
         assuming_session=mock_session,

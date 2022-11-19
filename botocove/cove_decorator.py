@@ -105,9 +105,7 @@ def _typecheck_external_id(external_id: Optional[str]) -> None:
         return
     if isinstance(external_id, str):
         return
-    raise TypeError(
-            f"external_id must be a string not {type(external_id)}"
-    )   
+    raise TypeError(f"external_id must be a string not {type(external_id)}")
 
 
 def _check_deprecation(kwargs: Dict[str, Any]) -> None:
