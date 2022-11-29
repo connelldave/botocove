@@ -147,3 +147,21 @@ def test_decorated_simple_func_passed_policy_arn(
 
     assert cove_output["Exceptions"] == []
     assert all(x["Result"] == session_policy_arns for x in cove_output["Results"])
+
+
+def test_decorated_simple_func_passed_external_id(
+    mock_session: Session, org_accounts: List[AccountTypeDef]
+) -> None:
+    sts_external_id: str = "a8h1q9zwrpo2873r2zby"
+
+    @cove(
+        assuming_session=mock_session,
+        external_id=sts_external_id,
+    )
+    def simple_func(session: CoveSession) -> Optional[str]:
+        return session.session_information["ExternalId"]
+
+    cove_output = simple_func()
+
+    assert cove_output["Exceptions"] == []
+    assert all(x["Result"] == sts_external_id for x in cove_output["Results"])

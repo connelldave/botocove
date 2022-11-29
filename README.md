@@ -224,6 +224,11 @@ regions = [
     ]
 ```
 
+`external_id`: str
+
+Defaults to None. An external id that will be passed to each Cove session's 
+`sts.assume_role()` call.
+
 ### CoveSession
 
 Cove supplies an enriched Boto3 session to each function called. Account details

@@ -15,6 +15,7 @@ class CoveSessionInformation(TypedDict):
     RoleSessionName: Optional[str]
     Policy: Optional[str]
     PolicyArns: Optional[List[PolicyDescriptorTypeTypeDef]]
+    ExternalId: Optional[str]
     Result: Any
     ExceptionDetails: Optional[Exception]
     Region: Optional[str]

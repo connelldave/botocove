@@ -22,6 +22,7 @@ def cove(
     role_session_name: Optional[str] = None,
     policy: Optional[str] = None,
     policy_arns: Optional[List[PolicyDescriptorTypeTypeDef]] = None,
+    external_id: Optional[str] = None,
     assuming_session: Optional[Session] = None,
     raise_exception: bool = False,
     thread_workers: int = 20,
@@ -35,6 +36,7 @@ def cove(
             _check_deprecation(cove_kwargs)
 
             _typecheck_regions(regions)
+            _typecheck_external_id(external_id)
             _typecheck_id_list(target_ids)
             _typecheck_id_list(ignore_ids)
 
@@ -45,6 +47,7 @@ def cove(
                 role_session_name=role_session_name,
                 policy=policy,
                 policy_arns=policy_arns,
+                external_id=external_id,
                 assuming_session=assuming_session,
                 thread_workers=thread_workers,
                 regions=regions,
@@ -95,6 +98,14 @@ def _typecheck_regions(list_of_regions: Optional[List[str]]) -> None:
         raise TypeError(
             f"regions must be a list of str. Got str {repr(list_of_regions)}."
         )
+
+
+def _typecheck_external_id(external_id: Optional[str]) -> None:
+    if external_id is None:
+        return
+    if isinstance(external_id, str):
+        return
+    raise TypeError(f"external_id must be a string not {type(external_id)}")
 
 
 def _check_deprecation(kwargs: Dict[str, Any]) -> None:
