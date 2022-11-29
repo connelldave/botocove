@@ -226,7 +226,7 @@ regions = [
 
 `external_id`: str
 
-Defaults to None. An external id that will be passed to each Cove session's 
+Defaults to None. An external id that will be passed to each Cove session's
 `sts.assume_role()` call.
 
 ### CoveSession

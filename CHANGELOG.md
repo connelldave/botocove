@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Botocove now supports an external id argument that will be passed to each Cove 
+- Botocove now supports an external id argument that will be passed to each Cove
 session's `sts.assume_role()` call
 
 ## [1.6.3] - 2022-9-10
