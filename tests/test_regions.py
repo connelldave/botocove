@@ -35,7 +35,7 @@ def test_when_region_is_str_then_raises_type_error(mock_small_org: SmallOrg) -> 
         pass
 
     with pytest.raises(
-        TypeError, match="regions must be a list of str. Got str 'eu-west-1'."
+        TypeError, match=r"regions must be a list of str\. Got str 'eu-west-1'\."
     ):
         do_nothing()
 
