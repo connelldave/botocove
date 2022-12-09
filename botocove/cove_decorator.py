@@ -122,7 +122,7 @@ def _check_deprecation(kwargs: Dict[str, Any]) -> None:
 def _raise_type_error_for_any_kwarg_except_org_master(kwargs: Dict[str, Any]) -> None:
     for key in kwargs:
         if key != "org_master":
-            raise TypeError(f"Cove() got an unexpected keyword argument '{key}'")
+            raise TypeError(f"cove() got an unexpected keyword argument '{key}'")
     return None
 
 
