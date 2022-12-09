@@ -19,3 +19,16 @@ def test_when_account_not_in_org_raises_value_error(
         ValueError, match=r"Account 111111111111 is not in the organization\."
     ):
         do_nothing()
+
+
+def test_when_empty_sequence_raises_value_error(
+    mock_small_org: SmallOrg,
+) -> None:
+    @cove(target_ids=[])
+    def do_nothing(session: Session) -> None:
+        pass
+
+    with pytest.raises(
+        ValueError, match=r"target_ids when specified must have at least 1 element\."
+    ):
+        do_nothing()

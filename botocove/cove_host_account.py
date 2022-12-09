@@ -194,6 +194,8 @@ class CoveHostAccount(object):
         return ignored_accounts
 
     def _gather_target_accounts(self, targets: Optional[List[str]]) -> Set[str]:
+        if targets is not None and len(targets) == 0:
+            raise ValueError("target_ids when specified must have at least 1 element.")
         if targets:
             accs, ous = self._get_validated_ids(targets)
             if ous:
