@@ -16,6 +16,22 @@ def test_when_unspecified_then_output_has_a_result_for_each_org_account(
     assert set(mock_small_org.all_accounts) == {r["Id"] for r in output["Results"]}
 
 
+def test_when_accounts_in_org_then_output_has_result_for_each_target_id(
+    mock_small_org: SmallOrg,
+) -> None:
+    some_org_accounts = [
+        mock_small_org.all_accounts[0],
+        mock_small_org.all_accounts[1],
+    ]
+
+    @cove(target_ids=some_org_accounts)
+    def do_nothing(session: Session) -> None:
+        pass
+
+    output = do_nothing()
+    assert set(some_org_accounts) == {r["Id"] for r in output["Results"]}
+
+
 def test_when_account_not_in_org_raises_value_error(
     mock_small_org: SmallOrg,
 ) -> None:
