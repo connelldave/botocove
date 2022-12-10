@@ -108,7 +108,7 @@ class CoveHostAccount(object):
                     # it's not practical without a lot of code reorganization.
                     if account_id not in self.account_data:
                         raise ValueError(
-                            f"Account {account_id} is not in the organization."
+                            f"Account {account_id} is not ACTIVE in the organization."
                         )
 
                     yield CoveSessionInformation(

@@ -54,7 +54,7 @@ def test_when_account_not_in_org_raises_value_error(
         pass
 
     with pytest.raises(
-        ValueError, match=r"Account 111111111111 is not in the organization\."
+        ValueError, match=r"Account 111111111111 is not ACTIVE in the organization\."
     ):
         do_nothing()
 
