@@ -37,8 +37,8 @@ def cove(
 
             _typecheck_regions(regions)
             _typecheck_external_id(external_id)
-            _typecheck_id_list(target_ids, "target_ids")
-            _typecheck_id_list(ignore_ids, "ignore_ids")
+            _typecheck_target_ids(target_ids)
+            _typecheck_ignore_ids(ignore_ids)
 
             host_account = CoveHostAccount(
                 target_ids=target_ids,
@@ -126,11 +126,26 @@ def _raise_type_error_for_any_kwarg_except_org_master(kwargs: Dict[str, Any]) ->
     return None
 
 
-def _typecheck_id_list(list_of_ids: Optional[List[str]], name: str) -> None:
+def _typecheck_target_ids(list_of_ids: Optional[List[str]]) -> None:
     if list_of_ids is None:
         return
     if isinstance(list_of_ids, str):
-        raise TypeError(f"{name} must be a list of str. Got str {repr(list_of_ids)}.")
+        raise TypeError(
+            f"target_ids must be a list of str. Got str {repr(list_of_ids)}."
+        )
+    if len(list_of_ids) == 0:
+        raise ValueError("target_ids when specified must have at least 1 element.")
+    for _id in list_of_ids:
+        _typecheck_id(_id)
+
+
+def _typecheck_ignore_ids(list_of_ids: Optional[List[str]]) -> None:
+    if list_of_ids is None:
+        return
+    if isinstance(list_of_ids, str):
+        raise TypeError(
+            f"ignore_ids must be a list of str. Got str {repr(list_of_ids)}."
+        )
     for _id in list_of_ids:
         _typecheck_id(_id)
 
