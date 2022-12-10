@@ -102,8 +102,9 @@ class CoveHostAccount(object):
             for account_id in self.target_accounts:
                 if self.account_data is not None:
 
-                    # If running with target accounts, but with organization data available
-                    # ie running from org master but not targeting whole org
+                    # If running with target accounts, but with organization data
+                    # available, i.e., running from org master but not targeting
+                    # whole org.
                     if account_id not in self.account_data:
                         raise ValueError(
                             f"Account {account_id} is not ACTIVE in the organization."
