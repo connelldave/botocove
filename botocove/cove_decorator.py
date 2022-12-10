@@ -134,7 +134,9 @@ def _typecheck_target_ids(list_of_ids: Optional[List[str]]) -> None:
             f"target_ids must be a list of str. Got str {repr(list_of_ids)}."
         )
     if len(list_of_ids) == 0:
-        raise ValueError("target_ids when specified must have at least 1 element.")
+        raise ValueError(
+            f"target_ids must have at least 1 element. Got {repr(list_of_ids)}."
+        )
     for _id in list_of_ids:
         _typecheck_id(_id)
 

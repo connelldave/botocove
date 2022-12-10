@@ -67,6 +67,6 @@ def test_when_empty_sequence_raises_value_error(
         pass
 
     with pytest.raises(
-        ValueError, match=r"target_ids when specified must have at least 1 element\."
+        ValueError, match=r"target_ids must have at least 1 element\. Got \[\]\."
     ):
         do_nothing()
