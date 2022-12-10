@@ -98,6 +98,10 @@ def _typecheck_regions(list_of_regions: Optional[List[str]]) -> None:
         raise TypeError(
             f"regions must be a list of str. Got str {repr(list_of_regions)}."
         )
+    if len(list_of_regions) == 0:
+        raise ValueError(
+            f"regions must have at least 1 element. Got {repr(list_of_regions)}."
+        )
 
 
 def _typecheck_external_id(external_id: Optional[str]) -> None:

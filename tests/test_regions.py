@@ -40,6 +40,17 @@ def test_when_region_is_str_then_raises_type_error(mock_small_org: SmallOrg) -> 
         do_nothing()
 
 
+def test_when_region_is_empty_then_raises_value_error(mock_small_org: SmallOrg) -> None:
+    @cove(regions=[])
+    def do_nothing() -> None:
+        pass
+
+    with pytest.raises(
+        ValueError, match=r"regions must have at least 1 element\. Got \[\]\."
+    ):
+        do_nothing()
+
+
 def test_when_any_region_is_passed_then_result_has_region_key(
     mock_small_org: SmallOrg,
 ) -> None:
