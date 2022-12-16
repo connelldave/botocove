@@ -54,7 +54,7 @@ show_source = true
 
 [tool.flakeheaven.plugins]
 flake8-bandit = ["+*", "-S322"]
-flake8-bugbear = ["+*"]
+flake8-bugbear = ["+*", "-B019"]
 flake8-builtins = ["+*"]
 flake8-comprehensions = ["+*"]
 flake8-eradicate = ["+*"]

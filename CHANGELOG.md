@@ -7,6 +7,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2022-16-12
+
+### Changed
+
+- This release fixes a regression around how `target_ids` are handled. If
+`target_ids` were provided as `[]`, the intent is no accounts would be targeted.
+However, this was being treated as `None` and if in an Organization context,
+would return all Organization accounts instead.
+
+We are releasing this as a minor version bump in case anyone has ended up with
+this misbehaviour as a dependency, but hopefully this will not be a breaking
+change for anyone.
+
+### Added
+
+- `target_ids` is now typechecked to assert is correctly formed as `list[str]`,
+a list with more than one string.
+
 ## [1.6.4] - 2022-28-11
 
 ### Added
