@@ -26,6 +26,10 @@ def test_when_region_is_unspecified_then_output_has_one_result_per_account(
         pass
 
     output = do_nothing()
+    print(output["Results"])
+    print(len(output["Results"]))
+    print(_count_member_accounts(mock_session))
+    print(mock_small_org.all_accounts)
     assert len(output["Results"]) == _count_member_accounts(mock_session)
 
 

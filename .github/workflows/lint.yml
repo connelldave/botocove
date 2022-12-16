@@ -10,15 +10,15 @@ jobs:
       - name: Checkout master
         uses: actions/checkout@master
 
-      - name: Set up Python 3.8
+      - name: Set up Python 3.9
         uses: actions/setup-python@v2
         with:
-          python-version: 3.8
+          python-version: 3.9
 
       - name: Setup Poetry
         run: |
           export POETRY_HOME=/opt/poetry
-          python3 install-poetry.py --version 1.2.0
+          python3 install-poetry.py --version 1.3.1
           $POETRY_HOME/bin/poetry --version
 
       - name: Install dev packages

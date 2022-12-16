@@ -177,7 +177,7 @@ class CoveHostAccount(object):
         accounts_to_ignore = self._gather_ignored_accounts()
         logger.info(f"Ignoring account IDs: {accounts_to_ignore=}")
         accounts_to_target = self._gather_target_accounts(target_ids)
-        final_accounts: Set = accounts_to_target - accounts_to_ignore
+        final_accounts: Set[str] = accounts_to_target - accounts_to_ignore
         if len(final_accounts) < 1:
             raise ValueError(
                 "There are no eligible account ids to run decorated func against"

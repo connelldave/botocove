@@ -28,7 +28,7 @@ def cove(
     thread_workers: int = 20,
     regions: Optional[List[str]] = None,
     **cove_kwargs: Any,
-) -> Callable:
+) -> Callable:  # type: ignore
     def decorator(func: Callable[..., Any]) -> Callable[..., CoveOutput]:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> CoveOutput:
