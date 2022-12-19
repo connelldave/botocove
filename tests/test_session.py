@@ -6,7 +6,9 @@ from mypy_boto3_organizations.type_defs import AccountTypeDef
 from mypy_boto3_sts.type_defs import PolicyDescriptorTypeTypeDef
 
 from botocove import CoveSession, cove
+
 # diff
+
 
 @pytest.fixture()
 def org_accounts(mock_session: Session) -> List[AccountTypeDef]:
