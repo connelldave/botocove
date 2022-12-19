@@ -13,6 +13,7 @@ python = "^3.8"
 boto3 = "*"
 tqdm = "*"
 boto3-stubs = {extras = ["sts", "organizations"], version = "*"}
+pytest-randomly = "^3.12.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
