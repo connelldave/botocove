@@ -1,3 +1,4 @@
+from tqdm import tqdm
 import logging
 import re
 from functools import lru_cache
@@ -278,15 +279,27 @@ class CoveHostAccount(object):
         Captures all account metadata into self.account_data for future lookup
         and returns a set of account IDs in the AWS organization.
         """
-        pages = self.org_client.get_paginator("list_accounts").paginate()
+        active_accounts: Iterable[AccountTypeDef] = tqdm(
+            self._iter_active_org_accounts(),
+            # total=5000,
+            desc="Listing accounts  ",  # Spaces align with execution.
+            # colour="#39ff14",  # neon green
+        )
+
         self.account_data: Dict[str, AccountTypeDef] = {
-            account["Id"]: account
-            for page in pages
-            for account in page["Accounts"]
-            if account["Status"] == "ACTIVE"
+            account["Id"]: account for account in active_accounts
         }
 
         return set(self.account_data.keys())
+
+
+    def _iter_active_org_accounts(self) -> Iterable[AccountTypeDef]:
+        pages = self.org_client.get_paginator("list_accounts").paginate()
+        for page in pages:
+            for account in page["Accounts"]:
+                if account["Status"] == "ACTIVE":
+                    yield account
+
 
     @lru_cache()
     def _get_child_ous(self, parent_ou: str) -> ListChildrenResponseTypeDef:
