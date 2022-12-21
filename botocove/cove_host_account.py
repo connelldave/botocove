@@ -1,4 +1,3 @@
-from tqdm import tqdm
 import logging
 import re
 from functools import lru_cache
@@ -27,6 +26,7 @@ from mypy_boto3_organizations.type_defs import (
 )
 from mypy_boto3_sts.client import STSClient
 from mypy_boto3_sts.type_defs import PolicyDescriptorTypeTypeDef
+from tqdm import tqdm
 
 from botocove.cove_types import CoveSessionInformation
 
@@ -281,9 +281,7 @@ class CoveHostAccount(object):
         """
         active_accounts: Iterable[AccountTypeDef] = tqdm(
             self._iter_active_org_accounts(),
-            # total=5000,
             desc="Listing accounts  ",  # Spaces align with execution.
-            # colour="#39ff14",  # neon green
         )
 
         self.account_data: Dict[str, AccountTypeDef] = {
@@ -292,14 +290,12 @@ class CoveHostAccount(object):
 
         return set(self.account_data.keys())
 
-
     def _iter_active_org_accounts(self) -> Iterable[AccountTypeDef]:
         pages = self.org_client.get_paginator("list_accounts").paginate()
         for page in pages:
             for account in page["Accounts"]:
                 if account["Status"] == "ACTIVE":
                     yield account
-
 
     @lru_cache()
     def _get_child_ous(self, parent_ou: str) -> ListChildrenResponseTypeDef:
