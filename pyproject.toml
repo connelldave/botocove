@@ -13,7 +13,7 @@ python = "^3.8"
 boto3 = "*"
 tqdm = "*"
 boto3-stubs = {extras = ["sts", "organizations"], version = "*"}
-types-tqdm = "^4.64.7"
+types-tqdm = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
