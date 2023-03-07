@@ -97,7 +97,7 @@ class CoveHostAccount(object):
 
     def get_cove_sessions(self) -> List[CoveSessionInformation]:
         logger.info(f"Getting session information for {self.target_accounts=}")
-        logger.info(f"AWS Partition: {self.parition=}")
+        logger.info(f"AWS Partition: {self.partition=}")
         logger.info(f"Role: {self.role_to_assume=} {self.role_session_name=}")
         logger.info(f"Session policy: {self.policy_arns=} {self.policy=}")
         return list(self._generate_account_sessions())
