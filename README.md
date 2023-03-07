@@ -146,7 +146,7 @@ Equivalent to:
 @cove(
     target_ids=None, ignore_ids=None, rolename=None, role_session_name=None,
     policy=None, policy_arns=None, assuming_session=None, raise_exception=False,
-    thread_workers=20, regions=None
+    thread_workers=20, regions=None, partition=None
     )
 ```
 
@@ -223,6 +223,19 @@ regions = [
     r['RegionName'] for r in boto3.client('ec2').describe_regions()['Regions']
     ]
 ```
+
+`partition`: str
+
+If not provided, Cove will use the AWS parition of your profile in constructing
+the ARN for the role to assume in all target accounts.
+
+A partition is a group of Amazon Regions. Each AWS Organization and account are
+scoped to one partition.
+
+The following are the supported partitions:
+ - `aws` - Amazon Regions
+ - `aws-cn` - China Regions
+ - `aws-us-gov` - Amazon GovCloud (US) Regions
 
 `external_id`: str
 
