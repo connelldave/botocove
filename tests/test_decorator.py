@@ -80,6 +80,7 @@ def test_decorated_simple_func_passed_args(
             "Arn": org_accounts[1]["Arn"],
             "Email": org_accounts[1]["Email"],
             "Name": org_accounts[1]["Name"],
+            "Partition": "aws",
             "Status": "ACTIVE",
             "AssumeRoleSuccess": True,
             "Result": 6,
