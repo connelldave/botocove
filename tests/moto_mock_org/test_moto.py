@@ -13,6 +13,7 @@ def test_small_org(mock_small_org: SmallOrg) -> None:
         external_id=None,
         assuming_session=None,
         regions=None,
+        partition=None,
         thread_workers=20,
     )
     assert mock_small_org.master_acc_id == host_account.host_account_id
@@ -31,6 +32,7 @@ def test_large_org(mock_large_org: LargeOrg) -> None:
         external_id=None,
         assuming_session=None,
         regions=None,
+        partition=None,
         thread_workers=20,
     )
     assert mock_large_org.master_acc_id == host_account.host_account_id

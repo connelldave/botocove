@@ -19,6 +19,7 @@ class CoveSessionInformation(TypedDict):
     Result: Any
     ExceptionDetails: Optional[Exception]
     Region: Optional[str]
+    Partition: Optional[str]
 
 
 class CoveFunctionOutput(TypedDict):

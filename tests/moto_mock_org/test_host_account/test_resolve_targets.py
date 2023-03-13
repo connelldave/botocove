@@ -14,6 +14,7 @@ def test_target_all_in_org(mock_small_org: SmallOrg) -> None:
         external_id=None,
         assuming_session=None,
         regions=None,
+        partition=None,
         thread_workers=20,
     )
     sessions = host_account.get_cove_sessions()
@@ -36,6 +37,7 @@ def test_target_all_in_org_ignore_one(mock_small_org: SmallOrg) -> None:
         external_id=None,
         assuming_session=None,
         regions=None,
+        partition=None,
         thread_workers=20,
     )
     sessions = host_account.get_cove_sessions()
@@ -60,6 +62,7 @@ def test_target_all_in_org_ignore_one_ou(mock_small_org: SmallOrg) -> None:
         external_id=None,
         assuming_session=None,
         regions=None,
+        partition=None,
         thread_workers=20,
     )
     sessions = host_account.get_cove_sessions()
@@ -87,6 +90,7 @@ def test_large_org_target_all_in_org_ignore_one_ou(mock_large_org: LargeOrg) -> 
         external_id=None,
         assuming_session=None,
         regions=None,
+        partition=None,
         thread_workers=20,
     )
     sessions = host_account.get_cove_sessions()
@@ -115,6 +119,7 @@ def test_large_org_target_all_in_org_ignore_two_ous(mock_large_org: LargeOrg) ->
         external_id=None,
         assuming_session=None,
         regions=None,
+        partition=None,
         thread_workers=20,
     )
     sessions = host_account.get_cove_sessions()
@@ -142,6 +147,7 @@ def test_target_targets_and_ignores(mock_small_org: SmallOrg) -> None:
         external_id=None,
         assuming_session=None,
         regions=None,
+        partition=None,
         thread_workers=20,
     )
     sessions = host_account.get_cove_sessions()
@@ -165,6 +171,7 @@ def test_target_just_targets(mock_small_org: SmallOrg) -> None:
         external_id=None,
         assuming_session=None,
         regions=None,
+        partition=None,
         thread_workers=20,
     )
     sessions = host_account.get_cove_sessions()

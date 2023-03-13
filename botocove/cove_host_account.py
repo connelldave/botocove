@@ -61,7 +61,7 @@ class CoveHostAccount(object):
 
         caller_id = self.sts_client.get_caller_identity()
         self.host_account_id = caller_id["Account"]
-        self.host_account_partition = caller_id['Arn'].split(':')[1]
+        self.host_account_partition = caller_id["Arn"].split(":")[1]
 
         if regions is None:
             self.target_regions = [None]
