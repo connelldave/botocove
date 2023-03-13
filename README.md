@@ -226,16 +226,9 @@ regions = [
 
 `partition`: str
 
-If not provided, Cove will use the AWS parition of your profile in constructing
-the ARN for the role to assume in all target accounts.
-
-A partition is a group of Amazon Regions. Each AWS Organization and account are
-scoped to one partition.
-
-The following are the supported partitions:
- - `aws` - Amazon Regions
- - `aws-cn` - China Regions
- - `aws-us-gov` - Amazon GovCloud (US) Regions
+If not provided, Cove will use the [AWS partition](https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html)
+of your profile in constructing the ARN for the role to assume in all target
+accounts.
 
 `external_id`: str
 
