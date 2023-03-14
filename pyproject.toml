@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "botocove"
-version = "1.7.2"
+version = "1.7.3"
 description = "A decorator to allow running a function against all AWS accounts in an organization"
 authors = ["Dave Connell <daveconn41@gmail.com>"]
 license = "LGPL-3.0-or-later"

@@ -7,6 +7,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.3] - 2023-18-2
+
+### Added
+
+Adds support for providing a non-`aws` partition value
+
 ## [1.7.2] - 2023-18-2
 
 Adds py.typed file to behave properly for mypy.
