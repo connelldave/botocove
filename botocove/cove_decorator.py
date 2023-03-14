@@ -27,6 +27,7 @@ def cove(
     raise_exception: bool = False,
     thread_workers: int = 20,
     regions: Optional[List[str]] = None,
+    partition: Optional[str] = None,
     **cove_kwargs: Any,
 ) -> Callable:  # type: ignore
     def decorator(func: Callable[..., Any]) -> Callable[..., CoveOutput]:
@@ -51,6 +52,7 @@ def cove(
                 assuming_session=assuming_session,
                 thread_workers=thread_workers,
                 regions=regions,
+                partition=partition,
             )
 
             runner = CoveRunner(

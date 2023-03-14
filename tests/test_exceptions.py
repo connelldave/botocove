@@ -52,6 +52,7 @@ def test_handled_exception_in_wrapped_func(
         "Arn": org_accounts[1]["Arn"],
         "Email": org_accounts[1]["Email"],
         "Name": org_accounts[1]["Name"],
+        "Partition": "aws",
         "Status": "ACTIVE",
         "RoleSessionName": "OrganizationAccountAccessRole",
         "ExceptionDetails": repr(Exception("oh no")),

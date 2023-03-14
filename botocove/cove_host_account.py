@@ -51,6 +51,7 @@ class CoveHostAccount(object):
         assuming_session: Optional[Session],
         thread_workers: int,
         regions: Optional[List[str]],
+        partition: Optional[str],
     ) -> None:
 
         self.thread_workers = thread_workers
@@ -58,7 +59,9 @@ class CoveHostAccount(object):
         self.sts_client = self._get_boto3_sts_client(assuming_session)
         self.org_client = self._get_boto3_org_client(assuming_session)
 
-        self.host_account_id = self.sts_client.get_caller_identity()["Account"]
+        caller_id = self.sts_client.get_caller_identity()
+        self.host_account_id = caller_id["Account"]
+        self.host_account_partition = caller_id["Arn"].split(":")[1]
 
         if regions is None:
             self.target_regions = [None]
@@ -85,6 +88,7 @@ class CoveHostAccount(object):
                 "There are no eligible account ids to run decorated func against"
             )
 
+        self.partition = partition or self.host_account_partition
         self.role_to_assume = rolename or DEFAULT_ROLENAME
         self.role_session_name = role_session_name or self.role_to_assume
         self.policy = policy
@@ -93,6 +97,7 @@ class CoveHostAccount(object):
 
     def get_cove_sessions(self) -> List[CoveSessionInformation]:
         logger.info(f"Getting session information for {self.target_accounts=}")
+        logger.info(f"AWS Partition: {self.partition=}")
         logger.info(f"Role: {self.role_to_assume=} {self.role_session_name=}")
         logger.info(f"Session policy: {self.policy_arns=} {self.policy=}")
         return list(self._generate_account_sessions())
@@ -119,6 +124,7 @@ class CoveHostAccount(object):
                         ExternalId=self.external_id,
                         AssumeRoleSuccess=False,
                         Region=region,
+                        Partition=self.partition,
                         ExceptionDetails=None,
                         Name=self.account_data[account_id]["Name"],
                         Arn=self.account_data[account_id]["Arn"],
@@ -136,6 +142,7 @@ class CoveHostAccount(object):
                         ExternalId=self.external_id,
                         AssumeRoleSuccess=False,
                         Region=region,
+                        Partition=self.partition,
                         ExceptionDetails=None,
                         Name=None,
                         Arn=None,

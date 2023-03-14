@@ -34,7 +34,8 @@ class CoveSession(Session):
 
     def activate_cove_session(self) -> "CoveSession":
         role_arn = (
-            f"arn:aws:iam::{self.session_information['Id']}:role/"
+            f"arn:{self.session_information['Partition']}:"
+            f"iam::{self.session_information['Id']}:role/"
             f"{self.session_information['RoleName']}"
         )
 

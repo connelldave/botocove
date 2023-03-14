@@ -146,7 +146,7 @@ Equivalent to:
 @cove(
     target_ids=None, ignore_ids=None, rolename=None, role_session_name=None,
     policy=None, policy_arns=None, assuming_session=None, raise_exception=False,
-    thread_workers=20, regions=None
+    thread_workers=20, regions=None, partition=None
     )
 ```
 
@@ -223,6 +223,12 @@ regions = [
     r['RegionName'] for r in boto3.client('ec2').describe_regions()['Regions']
     ]
 ```
+
+`partition`: str
+
+If not provided, Cove will use the [AWS partition](https://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html)
+of your profile in constructing the ARN for the role to assume in all target
+accounts.
 
 `external_id`: str
 
