@@ -12,7 +12,6 @@ from typing import (
     Set,
     Tuple,
     Union,
-    cast,
 )
 
 import boto3
@@ -20,10 +19,7 @@ from boto3.session import Session
 from botocore.config import Config
 from botocore.exceptions import ClientError
 from mypy_boto3_organizations.client import OrganizationsClient
-from mypy_boto3_organizations.type_defs import (
-    AccountTypeDef,
-    ListChildrenResponseTypeDef,
-)
+from mypy_boto3_organizations.type_defs import AccountTypeDef
 from mypy_boto3_sts.client import STSClient
 from mypy_boto3_sts.type_defs import PolicyDescriptorTypeTypeDef
 
@@ -193,31 +189,28 @@ class CoveHostAccount(object):
 
     def _gather_ignored_accounts(self) -> Set[str]:
         ignored_accounts = {self.host_account_id}
-
         if self.provided_ignore_ids:
-            accs, ous = self._get_validated_ids(self.provided_ignore_ids)
-            ignored_accounts.update(accs)
-            if ous:
-                accs_from_ous = self._get_all_accounts_by_organization_units(ous)
-                ignored_accounts.update(accs_from_ous)
-
+            ignored_accounts |= self._gather_accounts(self.provided_ignore_ids)
         return ignored_accounts
 
     def _gather_target_accounts(self, targets: Optional[List[str]]) -> Set[str]:
         if targets:
-            accs, ous = self._get_validated_ids(targets)
-            if ous:
-                accs_from_ous = self._get_all_accounts_by_organization_units(ous)
-                accs.extend(accs_from_ous)
-            return set(accs)
-        else:
-            # No target_ids passed, getting all accounts in org
-            return self.organization_account_ids
+            return self._gather_accounts(targets)
+        return self.organization_account_ids
 
-    def _get_validated_ids(self, ids: List[str]) -> Tuple[List[str], List[str]]:
+    def _gather_accounts(self, resources: List[str]) -> Set[str]:
+        parsed_accounts, parsed_ous = self._get_validated_ids(resources)
 
-        accounts: List[str] = []
-        ous: List[str] = []
+        if not parsed_ous:
+            return parsed_accounts
+
+        traversed_accounts = self._list_accounts_for_ancestors(parsed_ous)
+        return parsed_accounts | traversed_accounts
+
+    def _get_validated_ids(self, ids: List[str]) -> Tuple[Set[str], Set[str]]:
+
+        accounts: Set[str] = set()
+        ous: Set[str] = set()
 
         for current_id in ids:
             if not isinstance(current_id, str):
@@ -225,60 +218,16 @@ class CoveHostAccount(object):
                     f"{current_id} is an incorrect type: all account and ou id's must be strings not {type(current_id)}"  # noqa E501
                 )
             if re.match(r"^\d{12}$", current_id):
-                accounts.append(current_id)
+                accounts.add(current_id)
                 continue
             if re.match(r"^ou-[0-9a-z]{4,32}-[a-z0-9]{8,32}$", current_id):
-                ous.append(current_id)
+                ous.add(current_id)
                 continue
             raise ValueError(
                 f"provided id is neither an aws account nor an ou: {current_id}"
             )
 
         return accounts, ous
-
-    def _get_all_accounts_by_organization_units(
-        self, target_ous: List[str]
-    ) -> List[str]:
-
-        account_list: List[str] = []
-
-        for parent_ou in target_ous:
-
-            current_ou_list: List[str] = []
-
-            # current_ou_list is mutated and recursivly populated with all childs
-            self._get_all_child_ous(parent_ou, current_ou_list)
-
-            # for complete list add parent ou as well to list of child ous
-            current_ou_list.append(parent_ou)
-
-            account_list.extend(
-                self._get_accounts_by_organization_units(current_ou_list)
-            )
-
-        return account_list
-
-    def _get_all_child_ous(self, parent_ou: str, ou_list: List[str]) -> None:
-        """Depth-first recursion mutates the current_ou_list present in the calling
-        function to establish all children of a parent OU"""
-        child_ous = self._get_child_ous(parent_ou)
-        child_ous_list = [ou["Id"] for ou in child_ous["Children"]]
-        ou_list.extend(child_ous_list)
-
-        for ou in child_ous_list:
-            self._get_all_child_ous(ou, ou_list)
-
-    def _get_accounts_by_organization_units(
-        self, organization_units: List[str]
-    ) -> List[str]:
-
-        account_list: List[str] = []
-
-        for ou in organization_units:
-            ou_children = self._get_child_accounts(ou)
-            account_list.extend(acc["Id"] for acc in ou_children["Children"])
-
-        return account_list
 
     def _get_active_org_accounts(self) -> Set[str]:
         """
@@ -295,15 +244,40 @@ class CoveHostAccount(object):
 
         return set(self.account_data.keys())
 
+    def _list_accounts_for_ancestors(self, ancestor_ous: Set[str]) -> Set[str]:
+        """Lists all descendant accounts for the list of ancestor OUs."""
+        return {
+            account
+            for ou in ancestor_ous
+            for account in self._list_accounts_for_ancestor(ou)
+        }
+
+    def _list_accounts_for_ancestor(self, ancestor_ou: str) -> Set[str]:
+        """Lists all descendant accounts for the ancestor OU."""
+        ous_in_tree = self._list_ous_for_ancestor(ancestor_ou)
+        return {
+            account for ou in ous_in_tree for account in self._get_child_accounts(ou)
+        }
+
+    def _list_ous_for_ancestor(self, ancestor_ou: str) -> Set[str]:
+        """Lists all descendant OUs for the ancestor OUs. Includes self."""
+        ous_in_tree: Set[str] = {ancestor_ou}
+        child_ous = self._get_child_ous(ancestor_ou)
+        if not child_ous:
+            return ous_in_tree
+        for ou in child_ous:
+            ous_in_tree |= self._list_ous_for_ancestor(ou)
+        return ous_in_tree
+
     @lru_cache()
-    def _get_child_ous(self, parent_ou: str) -> ListChildrenResponseTypeDef:
+    def _get_child_ous(self, parent_ou: str) -> Set[str]:
+        """List the child organizational units (OUs) of the parent OU. Just the ID
+        is needed to traverse the organization tree."""
         try:
-            return cast(
-                ListChildrenResponseTypeDef,
-                self.org_client.get_paginator("list_children")
-                .paginate(ChildType="ORGANIZATIONAL_UNIT", ParentId=parent_ou)
-                .build_full_result(),
-            )
+            pages = self.org_client.get_paginator(
+                "list_organizational_units_for_parent"
+            ).paginate(ParentId=parent_ou)
+            return {ou["Id"] for page in pages for ou in page["OrganizationalUnits"]}
         except ClientError:
             logger.error(
                 "Cove can only look up target accounts by OU when running from the "
@@ -314,10 +288,10 @@ class CoveHostAccount(object):
             raise
 
     @lru_cache()
-    def _get_child_accounts(self, parent_ou: str) -> ListChildrenResponseTypeDef:
-        return cast(
-            ListChildrenResponseTypeDef,
-            self.org_client.get_paginator("list_children")
-            .paginate(ChildType="ACCOUNT", ParentId=parent_ou)
-            .build_full_result(),
+    def _get_child_accounts(self, parent_ou: str) -> Set[str]:
+        """List the child accounts of the parent organizational unit (OU). Just the ID is
+        needed to access the account. The metedata is enriched elsewhere."""
+        pages = self.org_client.get_paginator("list_accounts_for_parent").paginate(
+            ParentId=parent_ou
         )
+        return {account["Id"] for page in pages for account in page["Accounts"]}
