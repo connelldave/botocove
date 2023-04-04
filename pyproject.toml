@@ -32,7 +32,7 @@ flake8-print = "*"
 mypy = "*"
 pre-commit = "*"
 flakeheaven = "*"
-moto = {extras = ["organizations", "sts"], version = "3.0.4"}
+moto = {extras = ["organizations", "sts"], version = "*"}
 pytest-randomly = "*"
 
 
