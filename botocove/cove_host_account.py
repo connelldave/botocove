@@ -296,10 +296,10 @@ class CoveHostAccount(object):
         is needed to traverse the organization tree."""
 
         try:
-            pages = self.org_client.get_paginator(
-                "list_organizational_units_for_parent"
-            ).paginate(ParentId=parent_ou)
-            return [ou["Id"] for page in pages for ou in page["OrganizationalUnits"]]
+            pages = self.org_client.get_paginator("list_children").paginate(
+                ParentId=parent_ou, ChildType="ORGANIZATIONAL_UNIT"
+            )
+            return [ou["Id"] for page in pages for ou in page["Children"]]
         except ClientError:
             logger.error(
                 "Cove can only look up target accounts by OU when running from the "
@@ -314,7 +314,7 @@ class CoveHostAccount(object):
         """List the child accounts of the parent organizational unit (OU). Just the ID is
         needed to access the account. The metadata is enriched elsewhere."""
 
-        pages = self.org_client.get_paginator("list_accounts_for_parent").paginate(
-            ParentId=parent_ou
+        pages = self.org_client.get_paginator("list_children").paginate(
+            ParentId=parent_ou, ChildType="ACCOUNT"
         )
-        return [account["Id"] for page in pages for account in page["Accounts"]]
+        return [account["Id"] for page in pages for account in page["Children"]]
