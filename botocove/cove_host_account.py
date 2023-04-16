@@ -12,7 +12,6 @@ from typing import (
     Set,
     Tuple,
     Union,
-    cast,
 )
 
 import boto3
@@ -20,10 +19,7 @@ from boto3.session import Session
 from botocore.config import Config
 from botocore.exceptions import ClientError
 from mypy_boto3_organizations.client import OrganizationsClient
-from mypy_boto3_organizations.type_defs import (
-    AccountTypeDef,
-    ListChildrenResponseTypeDef,
-)
+from mypy_boto3_organizations.type_defs import AccountTypeDef
 from mypy_boto3_sts.client import STSClient
 from mypy_boto3_sts.type_defs import PolicyDescriptorTypeTypeDef
 
@@ -261,11 +257,11 @@ class CoveHostAccount(object):
     def _get_all_child_ous(self, parent_ou: str, ou_list: List[str]) -> None:
         """Depth-first recursion mutates the current_ou_list present in the calling
         function to establish all children of a parent OU"""
-        child_ous = self._get_child_ous(parent_ou)
-        child_ous_list = [ou["Id"] for ou in child_ous["Children"]]
-        ou_list.extend(child_ous_list)
 
-        for ou in child_ous_list:
+        child_ous = self._get_child_ous(parent_ou)
+        ou_list.extend(child_ous)
+
+        for ou in child_ous:
             self._get_all_child_ous(ou, ou_list)
 
     def _get_accounts_by_organization_units(
@@ -276,15 +272,14 @@ class CoveHostAccount(object):
 
         for ou in organization_units:
             ou_children = self._get_child_accounts(ou)
-            account_list.extend(acc["Id"] for acc in ou_children["Children"])
+            account_list.extend(ou_children)
 
         return account_list
 
     def _get_active_org_accounts(self) -> Set[str]:
-        """
-        Captures all account metadata into self.account_data for future lookup
-        and returns a set of account IDs in the AWS organization.
-        """
+        """Captures all account metadata into self.account_data for future lookup and
+        returns a set of account IDs in the AWS organization."""
+
         pages = self.org_client.get_paginator("list_accounts").paginate()
         self.account_data: Dict[str, AccountTypeDef] = {
             account["Id"]: account
@@ -296,14 +291,15 @@ class CoveHostAccount(object):
         return set(self.account_data.keys())
 
     @lru_cache()
-    def _get_child_ous(self, parent_ou: str) -> ListChildrenResponseTypeDef:
+    def _get_child_ous(self, parent_ou: str) -> List[str]:
+        """List the child organizational units (OUs) of the parent OU. Just the ID
+        is needed to traverse the organization tree."""
+
         try:
-            return cast(
-                ListChildrenResponseTypeDef,
-                self.org_client.get_paginator("list_children")
-                .paginate(ChildType="ORGANIZATIONAL_UNIT", ParentId=parent_ou)
-                .build_full_result(),
-            )
+            pages = self.org_client.get_paginator(
+                "list_organizational_units_for_parent"
+            ).paginate(ParentId=parent_ou)
+            return [ou["Id"] for page in pages for ou in page["OrganizationalUnits"]]
         except ClientError:
             logger.error(
                 "Cove can only look up target accounts by OU when running from the "
@@ -314,10 +310,11 @@ class CoveHostAccount(object):
             raise
 
     @lru_cache()
-    def _get_child_accounts(self, parent_ou: str) -> ListChildrenResponseTypeDef:
-        return cast(
-            ListChildrenResponseTypeDef,
-            self.org_client.get_paginator("list_children")
-            .paginate(ChildType="ACCOUNT", ParentId=parent_ou)
-            .build_full_result(),
+    def _get_child_accounts(self, parent_ou: str) -> List[str]:
+        """List the child accounts of the parent organizational unit (OU). Just the ID is
+        needed to access the account. The metadata is enriched elsewhere."""
+
+        pages = self.org_client.get_paginator("list_accounts_for_parent").paginate(
+            ParentId=parent_ou
         )
+        return [account["Id"] for page in pages for account in page["Accounts"]]
