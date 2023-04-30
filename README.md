@@ -36,14 +36,12 @@ Cove with appropriate [arguments](#arguments)
 
 Cove will not execute a function call in the account it's called from.
 
-Default IAM requirements are:
+In the Botocove calling account the minimum IAM requirements are:
 
-In the Botocove calling account:
-
-- Base requirements `sts:assumerole` and `sts:get-caller-identity`
-- To run against an entire AWS Organization and capture account metadata:
-`organizations:list-accounts`
-- To run against specific Organizational Units: `organizations:list-children`
+- `sts:AssumeRole` on all of the roles in the target accounts.
+- `organizations:ListAccounts` to run against an AWS organization and capture
+  account metadata.
+- `organizations:ListChildren` to run against specific OUs.
 
 In the organization member accounts:
 
