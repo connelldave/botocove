@@ -35,6 +35,11 @@ flakeheaven = "*"
 moto = {extras = ["organizations", "sts"], version = "*"}
 pytest-randomly = "*"
 
+# Hint to the Poetry resolver to resolve boto3 correctly.
+# Otherwise there is a conflict with moto via requests.
+# Keep this until the botocore issue is resolved.
+# Follow https://github.com/boto/botocore/issues/2926 for details.
+urllib3 = "<2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
