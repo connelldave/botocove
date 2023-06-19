@@ -31,3 +31,13 @@ class CoveOutput(TypedDict):
     Results: List[Dict[str, Any]]
     Exceptions: List[Dict[str, Any]]
     FailedAssumeRole: List[Dict[str, Any]]
+
+
+class BotocoveError(Exception):
+    """Base class for all Botocove errors."""
+    pass
+
+class InvalidRegion(Exception):
+    """Indicates that client region input is invalid."""
+    def __init__(self, region: str) -> None:
+        self.region = region

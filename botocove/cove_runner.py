@@ -2,11 +2,12 @@ import logging
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from typing import Any, Callable, Iterable, List
 
+from botocore.exceptions import EndpointConnectionError
 from tqdm import tqdm
 
 from botocove.cove_host_account import CoveHostAccount
 from botocove.cove_session import CoveSession
-from botocove.cove_types import CoveFunctionOutput, CoveSessionInformation
+from botocove.cove_types import CoveFunctionOutput, CoveSessionInformation, InvalidRegion
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +79,12 @@ class CoveRunner(object):
             return cove_session.format_cove_result(result)
 
         except Exception as e:
+
+            if isinstance(e, EndpointConnectionError):
+                if not cove_session.is_region_in_boto3_model():
+                    logger.exception(cove_session.format_cove_error(e))
+                    raise InvalidRegion(account_session_info["Region"]) from e
+
             if self.raise_exception is True:
                 logger.exception(cove_session.format_cove_error(e))
                 raise

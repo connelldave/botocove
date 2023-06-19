@@ -90,3 +90,11 @@ class CoveSession(Session):
     def format_cove_error(self, err: Exception) -> CoveSessionInformation:
         self.session_information["ExceptionDetails"] = err
         return self.session_information
+
+    def is_region_in_boto3_model(self) -> bool:
+        boto3_regions = {
+            r
+            for p in self.get_available_partitions()
+            for r in self.get_available_regions("ec2", p)
+        }
+        return self.session_information["Region"] in boto3_regions

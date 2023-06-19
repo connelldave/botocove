@@ -1,7 +1,9 @@
+from botocore.exceptions import EndpointConnectionError
+from typing import Any
 import pytest
 from boto3.session import Session
 
-from botocove import cove
+from botocove import cove, InvalidRegion
 from tests.moto_mock_org.moto_models import SmallOrg
 
 
@@ -84,6 +86,39 @@ def test_when_two_regions_are_passed_then_output_has_one_result_per_account_per_
             1 for result in output["Results"] if result["Region"] == region
         )
         assert number_of_results_per_region == number_of_member_accounts
+
+
+def test_moto_when_region_is_invalid_and_client_does_nothing_then_output_has_result(
+    mock_session: Session, mock_small_org: SmallOrg
+) -> None:
+    @cove(regions=["xxxx"])
+    def do_nothing(session: Session) -> None:
+        pass
+
+    output = do_nothing()
+
+    assert output["Results"]
+    for result in output["Results"]:
+        assert result["Region"] == "xxxx"
+
+
+def test_moto_when_region_is_invalid_and_client_calls_api_then_raises_endpoint_error(
+    mock_session: Session, mock_small_org: SmallOrg
+) -> None:
+    # Moto's FAQ says it "only allows valid regions, supporting the same regions
+    # that AWS supports" [1]. But it's not true for all service backends.
+    #
+    # Normally I would use the STS GetCallerIdentity API as the simplest call.
+    # But Moto's STS backend doesn't seem to trigger the error. The EC2
+    # DescribeAvailabilityZones API does trigger the error.
+    #
+    # [1]: https://github.com/getmoto/moto/blob/7b982522144e3f75e936560e76a92a798fe4e0fd/docs/docs/faq.rst
+    @cove(regions=["xxxx"])
+    def call_api(session: Session) -> Any:
+        return session.client("ec2").describe_availability_zones()
+
+    with pytest.raises(InvalidRegion, match=f"^xxxx$"):
+        call_api()
 
 
 def _count_member_accounts(session: Session) -> int:
