@@ -44,8 +44,12 @@ class CoveHostAccount(object):
             logger.info("No Boto3 session argument: using credential chain")
             assuming_session = Session()
 
+        # Use a regional STS endpoint to access regions that are not enabled by
+        # default. See AWS Knowledge Center.
+        # https://repost.aws/knowledge-center/iam-validate-access-credentials
         self.sts_client = assuming_session.client(
             service_name="sts",
+            endpoint_url=f"https://sts.{assuming_session.region_name}.amazonaws.com",
             config=Config(max_pool_connections=self.thread_workers),
         )
 
