@@ -29,3 +29,5 @@ MANIFEST
 # Unit test / coverage reports
 .coverage
 .pytest_cache/
+.flakeheaven_cache/
+

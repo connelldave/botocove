@@ -16,24 +16,29 @@ boto3-stubs = {extras = ["sts", "organizations"], version = "*"}
 types-tqdm = "*"
 
 [tool.poetry.dev-dependencies]
-pytest = "*"
-pytest-mock = "*"
-isort = "*"
-black = "*"
-flake8-bugbear = "*"
-flake8-builtins = "*"
-flake8-comprehensions = "*"
-flake8-eradicate = "*"
-flake8-isort = "*"
-flake8-mutable = "*"
-flake8-pytest-style = "*"
-pep8-naming = "*"
-flake8-print = "*"
-mypy = "*"
-pre-commit = "*"
-flakeheaven = "*"
-moto = {extras = ["organizations", "sts"], version = "*"}
-pytest-randomly = "*"
+
+# Latest versions on 2023-10-08.
+pytest = ">=7.4.2"
+pytest-mock = ">=3.11.1"
+isort = ">=5.12.0"
+black = ">=23.9.1"
+flake8-builtins = ">=2.1.0"
+flake8-comprehensions = ">=3.14.0"
+flake8-eradicate = ">=1.4.0"
+flake8-isort = ">=6.1.0"
+flake8-mutable = ">=1.2.0"
+flake8-pytest-style = ">=1.7.2"
+flake8-print = ">=5.0.0"
+mypy = ">=1.5.1"
+pre-commit = ">=3.4.0"
+flakeheaven = ">=3.3.0"
+moto = {extras = ["organizations", "sts"], version = ">=4.2.5"}
+pytest-randomly = ">=3.15.0"
+
+# These are the last versions compatible with flake8 4. flakeheaven 3.3.0 is
+# stuck on flake8 4. https://github.com/flakeheaven/flakeheaven/issues/132
+pep8-naming = "==0.13.2"
+flake8-bugbear = "==23.3.12"
 
 # Hint to the Poetry resolver to resolve boto3 correctly.
 # Otherwise there is a conflict with moto via requests.
