@@ -12,7 +12,7 @@ keywords = ["AWS", "organizations", "AWS organizations", "boto3"]
 python = "^3.8"
 boto3 = "*"
 tqdm = "*"
-boto3-stubs = {extras = ["sts", "organizations", "ec2"], version = "*"}
+boto3-stubs = {extras = ["sts", "organizations"], version = "*"}
 types-tqdm = "*"
 
 [tool.poetry.dev-dependencies]
@@ -32,7 +32,8 @@ flake8-print = ">=5.0.0"
 mypy = ">=1.5.1"
 pre-commit = ">=3.4.0"
 flakeheaven = ">=3.3.0"
-moto = {extras = ["organizations", "sts"], version = ">=4.2.5"}
+moto = {extras = ["organizations", "sts", "ec2"], version = ">=4.2.5"}
+boto3-stubs = {extras = ["ec2"], version = "*"}
 pytest-randomly = ">=3.15.0"
 
 # These are the last versions compatible with flake8 4. flakeheaven 3.3.0 is
