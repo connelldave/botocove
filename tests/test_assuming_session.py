@@ -50,3 +50,13 @@ def test_when_no_default_region_then_cove_uses_assuming_session_region() -> None
         raise_exception=True,
     )()
     assert output["Results"][0]["Result"] == "eu-central-1"
+
+
+@pytest.mark.usefixtures("_default_region")
+def test_cove_prefers_assuming_session_region() -> None:
+    output = cove(
+        _query_region,
+        assuming_session=Session(region_name="eu-central-1"),
+        raise_exception=True,
+    )()
+    assert output["Results"][0]["Result"] == "eu-central-1"
