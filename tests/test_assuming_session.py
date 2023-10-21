@@ -6,6 +6,17 @@ from moto import mock_sqs
 
 from botocove import cove
 
+# Each test calls a regional API and with a different configuration for the
+# assuming session and environment variables. The content of the successful
+# response doesn't matter. What matters is whether the request succeeds or
+# fails. To make the assertions easier all `cove` calls set `raise_exception`.
+
+
+def _call_regional_api(session: Session) -> str:
+    with mock_sqs():
+        session.client("sqs").list_queues()
+        return "OK"
+
 
 @pytest.fixture(autouse=True)
 def _org_with_one_member(mock_session: Session) -> None:
@@ -17,12 +28,6 @@ def _org_with_one_member(mock_session: Session) -> None:
 @pytest.fixture()
 def _default_region(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv("AWS_DEFAULT_REGION", "eu-west-1")
-
-
-def _call_regional_api(session: Session) -> str:
-    with mock_sqs():
-        session.client("sqs").list_queues()
-        return "OK"
 
 
 def test_when_no_assuming_session_and_no_default_region_then_cove_raises_error() -> None:  # noqa: 501
