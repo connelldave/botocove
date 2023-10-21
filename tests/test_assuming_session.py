@@ -37,10 +37,9 @@ def test_when_no_assuming_session_and_no_default_region_then_cove_raises_error()
         cove(_query_region, raise_exception=True)()
 
 
-@pytest.mark.usefixtures("_default_region")
-def test_when_no_assuming_session_then_cove_uses_default_region() -> None:
-    output = cove(_query_region, raise_exception=True)()
-    assert output["Results"][0]["Result"] == "eu-west-1"
+def test_when_no_default_region_and_assuming_session_has_no_region_cove_raises_error() -> None:  # noqa: 501
+    with pytest.raises(NoRegionError, match=r"^You must specify a region\.$"):
+        cove(_query_region, assuming_session=Session(), raise_exception=True)()
 
 
 def test_when_no_default_region_then_cove_uses_assuming_session_region() -> None:
@@ -50,6 +49,22 @@ def test_when_no_default_region_then_cove_uses_assuming_session_region() -> None
         raise_exception=True,
     )()
     assert output["Results"][0]["Result"] == "eu-central-1"
+
+
+@pytest.mark.usefixtures("_default_region")
+def test_when_no_assuming_session_then_cove_uses_default_region() -> None:
+    output = cove(_query_region, raise_exception=True)()
+    assert output["Results"][0]["Result"] == "eu-west-1"
+
+
+@pytest.mark.usefixtures("_default_region")
+def test_when_assuming_session_has_no_region_cove_uses_default_region() -> None:
+    output = cove(
+        _query_region,
+        assuming_session=Session(),
+        raise_exception=True,
+    )()
+    assert output["Results"][0]["Result"] == "eu-west-1"
 
 
 @pytest.mark.usefixtures("_default_region")
