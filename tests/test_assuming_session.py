@@ -2,20 +2,20 @@ import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from boto3.session import Session
 from botocore.exceptions import NoRegionError
-from moto import mock_sqs
+from moto import mock_ec2
 
 from botocove import cove
 
-# Each test calls a regional API and with a different configuration for the
-# assuming session and environment variables. The content of the successful
-# response doesn't matter. What matters is whether the request succeeds or
-# fails. To make the assertions easier all `cove` calls set `raise_exception`.
+# Query the region with different configurations of assuming session and
+# environment variables. To make the assertions easier all `cove` calls set
+# `raise_exception`. If set the assuming session region and the default region
+# are always distinct to be able to assert the source of the query result.
 
 
-def _call_regional_api(session: Session) -> str:
-    with mock_sqs():
-        session.client("sqs").list_queues()
-        return "OK"
+def _query_region(session: Session) -> str:
+    with mock_ec2():
+        response = session.client("ec2").describe_availability_zones()
+        return response["AvailabilityZones"][0]["RegionName"]
 
 
 @pytest.fixture(autouse=True)
@@ -30,21 +30,23 @@ def _default_region(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv("AWS_DEFAULT_REGION", "eu-west-1")
 
 
-def test_when_no_assuming_session_and_no_default_region_then_cove_raises_error() -> None:  # noqa: 501
+def test_when_no_assuming_session_and_no_default_region_then_cove_raises_error() -> (
+    None
+):
     with pytest.raises(NoRegionError, match=r"^You must specify a region\.$"):
-        cove(_call_regional_api, raise_exception=True)()
+        cove(_query_region, raise_exception=True)()
 
 
 @pytest.mark.usefixtures("_default_region")
-def test_when_no_assuming_session_and_default_region_then_cove_gives_result() -> None:
-    output = cove(_call_regional_api, raise_exception=True)()
-    assert output["Results"][0]["Result"] == "OK"
+def test_when_no_assuming_session_then_cove_uses_default_region() -> None:
+    output = cove(_query_region, raise_exception=True)()
+    assert output["Results"][0]["Result"] == "eu-west-1"
 
 
-def test_when_assuming_session_has_region_and_no_default_region_then_cove_gives_result() -> None:  # noqa: 501
+def test_when_no_default_region_then_cove_uses_assuming_session_region() -> None:
     output = cove(
-        _call_regional_api,
-        assuming_session=Session(region_name="eu-west-1"),
+        _query_region,
+        assuming_session=Session(region_name="eu-central-1"),
         raise_exception=True,
     )()
-    assert output["Results"][0]["Result"] == "OK"
+    assert output["Results"][0]["Result"] == "eu-central-1"

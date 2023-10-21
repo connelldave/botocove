@@ -12,7 +12,7 @@ keywords = ["AWS", "organizations", "AWS organizations", "boto3"]
 python = "^3.8"
 boto3 = "*"
 tqdm = "*"
-boto3-stubs = {extras = ["sts", "organizations"], version = "*"}
+boto3-stubs = {extras = ["sts", "organizations", "ec2"], version = "*"}
 types-tqdm = "*"
 
 [tool.poetry.dev-dependencies]
