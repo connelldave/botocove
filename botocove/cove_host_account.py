@@ -59,7 +59,7 @@ class CoveHostAccount(object):
         self.host_account_partition = caller_id["Arn"].split(":")[1]
 
         if regions is None:
-            self.target_regions = [None]
+            self.target_regions = [assuming_session.region_name]
         else:
             self.target_regions = regions
 

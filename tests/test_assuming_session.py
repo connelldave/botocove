@@ -41,7 +41,6 @@ def test_when_no_assuming_session_and_default_region_then_cove_gives_result() ->
     assert output["Results"][0]["Result"] == "OK"
 
 
-@pytest.mark.xfail(strict=True, raises=NoRegionError, reason="A bug in botocove?")
 def test_when_assuming_session_has_region_and_no_default_region_then_cove_gives_result() -> None:  # noqa: 501
     output = cove(
         _call_regional_api,
