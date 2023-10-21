@@ -2,9 +2,16 @@ import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from boto3.session import Session
 from botocore.exceptions import NoRegionError
+from moto import mock_sqs
 
 from botocove import cove
-from tests.moto_mock_org.moto_models import SmallOrg
+
+
+@pytest.fixture(autouse=True)
+def _org_with_one_member(mock_session: Session) -> None:
+    org_client = mock_session.client("organizations")
+    org_client.create_organization(FeatureSet="ALL")
+    org_client.create_account(Email="account1@aws.com", AccountName="Account 1")
 
 
 @pytest.fixture()
@@ -13,42 +20,27 @@ def _default_region(monkeypatch: MonkeyPatch) -> None:
 
 
 def _call_regional_api(session: Session) -> str:
-    session.client("sqs").list_queues()
-    return "OK"
+    with mock_sqs():
+        session.client("sqs").list_queues()
+        return "OK"
 
 
-def test_when_no_assuming_session_and_no_default_region_then_cove_raises_error(
-    mock_small_org: SmallOrg,
-) -> None:
-    output = cove(_call_regional_api)()
-
-    assert not output["Results"]
-    assert not output["FailedAssumeRole"]
-    assert output["Exceptions"]
-    for error in output["Exceptions"]:
-        assert isinstance(error["ExceptionDetails"], NoRegionError)
+def test_when_no_assuming_session_and_no_default_region_then_cove_raises_error() -> None:  # noqa: 501
+    with pytest.raises(NoRegionError, match=r"^You must specify a region\.$"):
+        cove(_call_regional_api, raise_exception=True)()
 
 
-@pytest.mark.xfail()
 @pytest.mark.usefixtures("_default_region")
-def test_when_no_assuming_session_and_default_region_then_cove_gives_result(
-    mock_small_org: SmallOrg,
-) -> None:
-    output = cove(_call_regional_api)()
-
-    assert not output["Exceptions"]
-    assert not output["FailedAssumeRole"]
-    assert output["Results"]
+def test_when_no_assuming_session_and_default_region_then_cove_gives_result() -> None:
+    output = cove(_call_regional_api, raise_exception=True)()
+    assert output["Results"][0]["Result"] == "OK"
 
 
-@pytest.mark.xfail()
-def test_when_assuming_session_has_region_and_no_default_region_then_cove_gives_result(
-    mock_small_org: SmallOrg,
-) -> None:
+@pytest.mark.xfail(strict=True, raises=NoRegionError, reason="A bug in botocove?")
+def test_when_assuming_session_has_region_and_no_default_region_then_cove_gives_result() -> None:  # noqa: 501
     output = cove(
-        _call_regional_api, assuming_session=Session(region_name="eu-west-1")
+        _call_regional_api,
+        assuming_session=Session(region_name="eu-west-1"),
+        raise_exception=True,
     )()
-
-    assert not output["Exceptions"]
-    assert not output["FailedAssumeRole"]
-    assert output["Results"]
+    assert output["Results"][0]["Result"] == "OK"
