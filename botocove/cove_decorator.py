@@ -1,5 +1,6 @@
 import functools
 import logging
+from itertools import chain
 from typing import Any, Callable, Dict, List, Optional
 from warnings import warn
 
@@ -84,7 +85,11 @@ def cove(
             )
 
             if regions is None:
-                for result in cove_output["Results"]:
+                for result in chain(
+                    cove_output["Results"],
+                    cove_output["Exceptions"],
+                    cove_output["FailedAssumeRole"],
+                ):
                     del result["Region"]
 
             return cove_output
