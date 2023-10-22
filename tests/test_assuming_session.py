@@ -1,3 +1,8 @@
+"""Query the region with different configurations of assuming session and
+environment variables. To make the assertions easier all `cove` calls set
+`raise_exception`. If set the assuming session region and the default region are
+always distinct to be able to assert the source of the query result."""
+
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from boto3.session import Session
@@ -5,11 +10,6 @@ from botocore.exceptions import NoRegionError
 from moto import mock_ec2
 
 from botocove import cove
-
-# Query the region with different configurations of assuming session and
-# environment variables. To make the assertions easier all `cove` calls set
-# `raise_exception`. If set the assuming session region and the default region
-# are always distinct to be able to assert the source of the query result.
 
 
 def _query_region(session: Session) -> str:
