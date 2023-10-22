@@ -45,21 +45,14 @@ class CoveHostAccount(object):
             logger.info("No Boto3 session argument: using credential chain")
             self._session = Session()
 
-        if self._session.region_name:
-            # Obtain version 2 session tokens valid in all AWS regions.
-            # https://repost.aws/knowledge-center/iam-validate-access-credentials
-            self.sts_client = self._session.client(
-                service_name="sts",
-                region_name=self._session.region_name,
-                endpoint_url=f"https://sts.{self._session.region_name}.amazonaws.com",
-                config=Config(max_pool_connections=self.thread_workers),
-            )
-        else:
-            # Obtain version 1 session tokens valid in AWS regions enabled by default.
-            self.sts_client = self._session.client(
-                service_name="sts",
-                config=Config(max_pool_connections=self.thread_workers),
-            )
+        # Obtain version 2 session tokens valid in all AWS regions.
+        # https://repost.aws/knowledge-center/iam-validate-access-credentials
+        self.sts_client = self._session.client(
+            service_name="sts",
+            region_name=self._session.region_name,
+            endpoint_url=f"https://sts.{self._session.region_name}.amazonaws.com",
+            config=Config(max_pool_connections=self.thread_workers),
+        )
 
         self.org_client = self._session.client(
             service_name="organizations",
