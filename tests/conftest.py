@@ -5,7 +5,7 @@ import pytest
 from _pytest.logging import LogCaptureFixture
 from _pytest.monkeypatch import MonkeyPatch
 from boto3 import Session
-from moto import mock_organizations, mock_sts
+from moto import mock_ec2, mock_organizations, mock_sts
 
 from tests.moto_mock_org.moto_models import LargeOrg, SmallOrg
 
@@ -27,7 +27,7 @@ def _clean_env(monkeypatch: MonkeyPatch) -> None:
 @pytest.fixture()
 def mock_session() -> Iterator[Session]:
     """Returns a session with mock AWS services."""
-    with mock_sts(), mock_organizations():
+    with mock_sts(), mock_organizations(), mock_ec2():
         yield Session()
 
 

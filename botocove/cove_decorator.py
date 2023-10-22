@@ -64,25 +64,30 @@ def cove(
                 thread_workers=thread_workers,
             )
 
-            output = runner.run_cove_function()
+            function_output = runner.run_cove_function()
 
-            # Rewrite dataclasses into untyped dicts to retain current functionality
-            return CoveOutput(
+            cove_output = CoveOutput(
                 Results=[
                     {k: v for k, v in r.items() if v is not None}
-                    for r in output["Results"]
+                    for r in function_output["Results"]
                 ],
                 Exceptions=[
                     {k: v for k, v in e.items() if v is not None}
-                    for e in output["Exceptions"]
+                    for e in function_output["Exceptions"]
                     if e["AssumeRoleSuccess"] is True
                 ],
                 FailedAssumeRole=[
                     {k: v for k, v in f.items() if v is not None}
-                    for f in output["Exceptions"]
+                    for f in function_output["Exceptions"]
                     if f["AssumeRoleSuccess"] is False
                 ],
             )
+
+            if regions is None:
+                for result in cove_output["Results"]:
+                    del result["Region"]
+
+            return cove_output
 
         return wrapper
 
