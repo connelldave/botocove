@@ -1,8 +1,14 @@
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 from boto3.session import Session
 
 from botocove import cove
 from tests.moto_mock_org.moto_models import SmallOrg
+
+
+@pytest.fixture(autouse=True)
+def _default_region(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "eu-west-1")
 
 
 def test_when_unspecified_then_output_has_a_result_for_each_org_account(
