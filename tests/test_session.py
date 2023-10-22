@@ -1,11 +1,17 @@
 from typing import List
 
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 from boto3 import Session
 from mypy_boto3_organizations.type_defs import AccountTypeDef
 from mypy_boto3_sts.type_defs import PolicyDescriptorTypeTypeDef
 
 from botocove import CoveSession, cove
+
+
+@pytest.fixture(autouse=True)
+def _default_region(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "eu-west-1")
 
 
 @pytest.fixture()
