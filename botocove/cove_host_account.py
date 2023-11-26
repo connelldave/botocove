@@ -1,26 +1,12 @@
 import logging
 import re
 from functools import lru_cache
-from typing import (
-    Any,
-    Dict,
-    Iterable,
-    List,
-    Literal,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-    Union,
-)
+from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
-import boto3
 from boto3.session import Session
 from botocore.config import Config
 from botocore.exceptions import ClientError
-from mypy_boto3_organizations.client import OrganizationsClient
 from mypy_boto3_organizations.type_defs import AccountTypeDef
-from mypy_boto3_sts.client import STSClient
 from mypy_boto3_sts.type_defs import PolicyDescriptorTypeTypeDef
 
 from botocove.cove_types import CoveSessionInformation
@@ -52,8 +38,21 @@ class CoveHostAccount(object):
 
         self.thread_workers = thread_workers
 
-        self.sts_client = self._get_boto3_sts_client(assuming_session)
-        self.org_client = self._get_boto3_org_client(assuming_session)
+        if assuming_session:
+            logger.info(f"Using provided Boto3 session {assuming_session}")
+        else:
+            logger.info("No Boto3 session argument: using credential chain")
+            assuming_session = Session()
+
+        self.sts_client = assuming_session.client(
+            service_name="sts",
+            config=Config(max_pool_connections=self.thread_workers),
+        )
+
+        self.org_client = assuming_session.client(
+            service_name="organizations",
+            config=Config(max_pool_connections=self.thread_workers),
+        )
 
         caller_id = self.sts_client.get_caller_identity()
         self.host_account_id = caller_id["Account"]
@@ -146,35 +145,6 @@ class CoveHostAccount(object):
                         Status=None,
                         Result=None,
                     )
-
-    def _get_boto3_client(
-        self,
-        clientname: Union[Literal["organizations"], Literal["sts"]],
-        assuming_session: Optional[Session],
-    ) -> Any:
-        if assuming_session:
-            logger.info(f"Using provided Boto3 session {assuming_session}")
-            return assuming_session.client(
-                service_name=clientname,
-                config=Config(max_pool_connections=self.thread_workers),
-            )
-        logger.info("No Boto3 session argument: using credential chain")
-        return boto3.client(
-            service_name=clientname,
-            config=Config(max_pool_connections=self.thread_workers),
-        )
-
-    def _get_boto3_org_client(
-        self, assuming_session: Optional[Session]
-    ) -> OrganizationsClient:
-        client: OrganizationsClient = self._get_boto3_client(
-            "organizations", assuming_session
-        )
-        return client
-
-    def _get_boto3_sts_client(self, assuming_session: Optional[Session]) -> STSClient:
-        client: STSClient = self._get_boto3_client("sts", assuming_session)
-        return client
 
     def _resolve_target_accounts(self, target_ids: Optional[List[str]]) -> Set[str]:
         accounts_to_ignore = self._gather_ignored_accounts()
