@@ -24,7 +24,7 @@ jobs:
           python3 -m venv $POETRY_HOME
           $POETRY_HOME/bin/pip install poetry==1.7.1
           $POETRY_HOME/bin/poetry --version
-
+    
       - name: Build and publish package
         run: |
           /opt/poetry/bin/poetry config pypi-token.pypi "${{ secrets.pypi_password }}"
