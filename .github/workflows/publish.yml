@@ -21,7 +21,8 @@ jobs:
       - name: Setup Poetry
         run: |
           export POETRY_HOME=/opt/poetry
-          python3 install-poetry.py --version 1.2.0
+          python3 -m venv $POETRY_HOME
+          $POETRY_HOME/bin/pip install poetry==1.7.1
           $POETRY_HOME/bin/poetry --version
 
       - name: Build and publish package
