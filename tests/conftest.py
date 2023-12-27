@@ -24,6 +24,16 @@ def _clean_env(monkeypatch: MonkeyPatch) -> None:
         monkeypatch.setenv(env_var, "broken_not_real_profile")
 
 
+@pytest.fixture(autouse=True)
+def _default_region(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "eu-west-1")
+
+
+@pytest.fixture()
+def _no_default_region(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.delenv("AWS_DEFAULT_REGION")
+
+
 @pytest.fixture()
 def mock_session() -> Iterator[Session]:
     """Returns a session with mock AWS services."""

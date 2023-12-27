@@ -56,6 +56,7 @@ def test_handled_exception_in_wrapped_func(
         "Status": "ACTIVE",
         "RoleSessionName": "OrganizationAccountAccessRole",
         "ExceptionDetails": repr(Exception("oh no")),
+        "Region": "eu-west-1",
     }
 
     # Compare repr of exceptions

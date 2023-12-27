@@ -86,6 +86,7 @@ def test_decorated_simple_func_passed_args(
             "Result": 6,
             "RoleName": "OrganizationAccountAccessRole",
             "RoleSessionName": "OrganizationAccountAccessRole",
+            "Region": "eu-west-1",
         }
     ]
 
