@@ -37,6 +37,7 @@ def test_session_result_formatter(org_accounts: List[AccountTypeDef]) -> None:
             "Result": "test-string",
             "RoleName": "OrganizationAccountAccessRole",
             "RoleSessionName": "OrganizationAccountAccessRole",
+            "Region": "eu-west-1",
         }
     ]
     assert cove_output["Results"] == expected
@@ -66,6 +67,7 @@ def test_session_result_formatter_with_policy(
             "RoleName": "OrganizationAccountAccessRole",
             "RoleSessionName": "OrganizationAccountAccessRole",
             "Policy": session_policy,
+            "Region": "eu-west-1",
         }
     ]
     assert cove_output["Results"] == expected
@@ -97,6 +99,7 @@ def test_session_result_formatter_with_policy_arn(
             "RoleName": "OrganizationAccountAccessRole",
             "RoleSessionName": "OrganizationAccountAccessRole",
             "PolicyArns": session_policy_arns,
+            "Region": "eu-west-1",
         }
     ]
     assert cove_output["Results"] == expected

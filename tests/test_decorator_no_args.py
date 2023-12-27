@@ -35,6 +35,7 @@ def test_decorated_simple_func(org_accounts: List[AccountTypeDef]) -> None:
             "RoleName": "OrganizationAccountAccessRole",
             "RoleSessionName": "OrganizationAccountAccessRole",
             "Result": "hello",
+            "Region": "eu-west-1",
         }
     ]
     assert cove_output["Results"] == expected
@@ -58,6 +59,7 @@ def test_decorated_func_passed_arg(org_accounts: List[AccountTypeDef]) -> None:
             "RoleName": "OrganizationAccountAccessRole",
             "RoleSessionName": "OrganizationAccountAccessRole",
             "Result": "blue",
+            "Region": "eu-west-1",
         }
     ]
     assert cove_output["Results"] == expected
@@ -86,6 +88,7 @@ def test_decorated_func_passed_arg_and_kwarg(
             "RoleName": "OrganizationAccountAccessRole",
             "RoleSessionName": "OrganizationAccountAccessRole",
             "Result": ("blue", "circle", "11:11"),
+            "Region": "eu-west-1",
         }
     ]
     assert cove_output == expected
