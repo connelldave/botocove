@@ -105,6 +105,30 @@ def _typecheck_regions(list_of_regions: Optional[List[str]]) -> None:
             f"regions must have at least 1 element. Got {repr(list_of_regions)}."
         )
 
+    # An interactive user may misspell the region name. That typo causes pain
+    # and confusion in proportion to the number of target accounts.Each
+    # CoveSession in the typo region raises an EndpointConnecionError, but only
+    # after several seconds. (It may be longer when DNS is slow.)
+    #
+    # The simplest way to help is an immediate warning for any unrecognized
+    # spelling. In that way the user can cancel the execution before wasting
+    # more time.
+    #
+    # We can't raise an error because the EC2 service model may be out of date
+    # and the user may really want to access a new region.
+    boto3_regions = {
+        r
+        for p in Session().get_available_partitions()
+        for r in Session().get_available_regions("ec2", p)
+    }
+    unrecognized_regions = [r for r in list_of_regions if r not in boto3_regions]
+    for region in unrecognized_regions:
+        message = (
+            "Unrecognized region may cause connection error. "
+            f"Check spelling of `{region}`."
+        )
+        warn(message, stacklevel=2)
+
 
 def _typecheck_external_id(external_id: Optional[str]) -> None:
     if external_id is None:
